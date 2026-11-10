@@ -47,6 +47,19 @@ body { margin: 0;
 .wrap, .stack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; border: 0; background: none; touch-action: manipulation; }
+button, .btn, nav a { transition: transform .3s cubic-bezier(.3, 1.7, .5, 1), background-color .2s, box-shadow .2s; }
+button:active, label.btn:active { transform: scale(.93); transition-duration: .08s; }
+.pop { animation: pop .5s cubic-bezier(.3, 1.5, .5, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+@keyframes pop { from { opacity: 0; transform: scale(.82) translateY(12px); } }
+.bump { animation: bump .55s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes bump { 35% { transform: scale(1.3); } }
+.row-in { animation: rowin .45s cubic-bezier(.3, 1.4, .5, 1); }
+@keyframes rowin { from { opacity: 0; transform: translateY(-14px) scale(.96); } }
+.flash-pop { animation: presspop .45s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes presspop { from { transform: scale(.9); } 55% { transform: scale(1.06); } }
+@keyframes drain { from { transform: scaleY(1); } to { transform: scaleY(0); } }
+@keyframes toastin { from { opacity: 0; transform: translate(-50%, 16px) scale(.9); } }
+@media (prefers-reduced-motion: reduce) { .pop, .bump, .row-in, .flash-pop, .toast { animation: none !important; } button, .btn, nav a { transition: none; } }
 .sec-head a, .empty a { color: inherit; }
 :focus-visible { outline: 3px solid var(--p1); outline-offset: 2px; }
 h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
@@ -68,9 +81,9 @@ nav a[aria-current="page"] { background: var(--surface); color: var(--ink); font
 .pl { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; text-align: center; }
 .crown { height: 34px; display: flex; align-items: flex-end; }
 .crown svg { width: 40px; height: 34px; fill: var(--gold); }
-.lead .crown svg { animation: drop .5s cubic-bezier(.2,1.6,.4,1); }
+.lead.new .crown svg { animation: drop .6s cubic-bezier(.2,1.8,.4,1); }
 @keyframes drop { from { transform: translateY(-14px) rotate(-12deg); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .lead .crown svg { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .lead.new .crown svg { animation: none; } }
 .pl .name { font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 8px; max-width: 100%; }
 .pl .name span:last-child { overflow-wrap: anywhere; }
 .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--pc); flex: none; }
@@ -93,14 +106,19 @@ nav a[aria-current="page"] { background: var(--surface); color: var(--ink); font
 .pill { flex: none; font-family: var(--display); font-weight: 700; background: var(--surface-2); border-radius: 999px; padding: 4px 12px; font-size: 15px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .who { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .62fr) minmax(0, 1fr); gap: 8px; }
 .who button.both { background: var(--surface-2); border-color: var(--line); padding-inline: 6px; }
-.who button.both.done { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 .dot.duo { background: linear-gradient(90deg, var(--p1) 50%, var(--p2) 50%); }
 .who button { min-height: 56px; border-radius: 14px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; min-width: 0;
   background: color-mix(in srgb, var(--pc) 13%, var(--surface)); border: 2px solid color-mix(in srgb, var(--pc) 45%, var(--surface)); transition: transform .08s; }
-.who button:active { transform: scale(.96); }
 .who button span.n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.who button.done { background: var(--pc); border-color: var(--pc); color: var(--on-fill); }
-.who button.done .dot { background: var(--on-fill); }
+.who button { position: relative; overflow: hidden; }
+.who button > * { position: relative; z-index: 1; }
+.who button.done { border-color: var(--pc); }
+.who button.both.done { border-color: var(--ink-2); }
+.who button .fill { position: absolute; inset: 0; z-index: 0; background: var(--pc); transform-origin: bottom; animation: drain linear forwards; }
+.who button.both .fill { background: linear-gradient(90deg, var(--p1) 50%, var(--p2) 50%); }
+.who button.flash { border-style: solid; border-color: var(--pc); cursor: default; }
+.who button.both.flash { border-color: var(--ink-2); }
+.who button.flash .dot { background: var(--on-fill); }
 .who .cnt { font-variant-numeric: tabular-nums; flex: none; }
 
 /* lijsten */
@@ -173,17 +191,17 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
 .addform .field { flex: 1 1 220px; }
 .group { background: var(--surface-2); border-radius: 24px; padding: 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .g-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.g-head .pill, .group .who button:not(.done):not(.both) { background-color: var(--surface); }
-.group .who button.both:not(.done) { background: var(--bg); }
+.g-head .pill, .group .who button:not(.both) { background-color: var(--surface); }
+.group .who button.both { background: var(--bg); }
+.g-body { display: flex; flex-direction: column; gap: 12px; }
 .g-toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; font-family: var(--display); font-weight: 700; font-size: 22px; text-align: left; min-width: 0; flex: 1; }
 .g-toggle .g-name { overflow-wrap: anywhere; }
-.g-toggle .tw { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 14px; transition: transform .15s; }
+.g-toggle .tw { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 14px; transition: transform .35s cubic-bezier(.3, 1.7, .5, 1); }
 .g-toggle[aria-expanded="false"] .tw { transform: rotate(-90deg); }
 .g-all { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); align-items: center; gap: 12px; }
 .g-all > span { color: var(--ink-2); font-size: 15px; }
 .g-all .who { max-width: 560px; width: 100%; justify-self: end; }
 .g-all .who button { border-style: dashed; }
-.g-all .who button.done { border-style: solid; }
 .group .empty { padding: 8px; }
 .grip { flex: none; width: 44px; height: 48px; border-radius: 12px; background: var(--surface-2); color: var(--muted); cursor: grab; touch-action: none; display: flex; align-items: center; justify-content: center; }
 .grip svg { width: 18px; height: 22px; fill: currentColor; pointer-events: none; }
@@ -199,7 +217,7 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
 .tasklist .drop-hint:not(:only-child) { display: none; }
 .tasklist .row:first-child { border-top: 0; }
 .tasklist .row { border-top: 1px solid var(--line); }
-.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 12px 18px; border-radius: 12px; z-index: 20; max-width: calc(100% - 32px); }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 12px 18px; border-radius: 12px; z-index: 20; max-width: calc(100% - 32px); animation: toastin .4s cubic-bezier(.3, 1.5, .5, 1); }
 .pin { align-self: center; width: min(100%, 340px); display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: 26px; padding: 24px 20px; }
 .pin h2 { font-size: 22px; } .pin p { margin: 0; color: var(--ink-2); font-size: 15px; }
 .dots { display: flex; gap: 14px; padding: 6px 0; }
@@ -273,14 +291,16 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
   const state = {
     ready: false,
     names: { p1: 'Speler 1', p2: 'Speler 2' },
-    tasks: [], groups: [], weekLog: [], logs: {}, open: {}, autoClose: 60, confirmDelG: null, dragging: false,
+    tasks: [], groups: [], weekLog: [], logs: {}, open: {}, autoClose: 60, tickSecs: 3, flash: {}, justOpened: null, confirmDelG: null, dragging: false,
     cur: weekInfo(new Date()), today: dayKey(new Date()),
     hist: null, histLog: null, confirmDel: null, newPts: 1,
     pin: '', cfgReady: false, unlocked: false, entry: '', pinStep: null, pinFirst: '', pinMsg: '',
   };
 
+  const RM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const SPRING = 'cubic-bezier(.25, 1.35, .45, 1)';
   function toast(msg) {
-    const t = $('toast'); t.textContent = msg; t.hidden = false;
+    const t = $('toast'); t.textContent = msg; t.hidden = true; void t.offsetWidth; t.hidden = false;
     clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 3500);
   }
   const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -295,12 +315,13 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
 
   /* ---------- opslag: alles staat in de browser van dit apparaat ---------- */
   const KEY = 'huishoudpunten-v1';
-  function snapshot() { return { v: 1, names: state.names, pin: state.pin, tasks: state.tasks, groups: state.groups, autoClose: state.autoClose, logs: state.logs }; }
+  function snapshot() { return { v: 1, names: state.names, pin: state.pin, tasks: state.tasks, groups: state.groups, autoClose: state.autoClose, tickSecs: state.tickSecs, logs: state.logs }; }
   function apply(d) {
     state.names = { p1: (d.names && d.names.p1) || 'Speler 1', p2: (d.names && d.names.p2) || 'Speler 2' };
     state.pin = typeof d.pin === 'string' ? d.pin : '';
     state.tasks = Array.isArray(d.tasks) ? d.tasks : [];
     state.groups = Array.isArray(d.groups) ? d.groups : [];
+    state.tickSecs = typeof d.tickSecs === 'number' && d.tickSecs >= 0 ? d.tickSecs : 3;
     state.autoClose = typeof d.autoClose === 'number' && d.autoClose >= 0 ? d.autoClose : 60;
     for (const t of state.tasks) if (!state.groups.some((g) => g.id === t.group)) t.group = '';
     state.logs = d.logs && typeof d.logs === 'object' ? d.logs : {};
@@ -363,14 +384,39 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
     persist();
     setTimeout(render, 61000);
   }
+  // Na een tik loopt het vakje in de ingestelde tijd leeg; zolang is het vergrendeld.
+  const flashing = (key) => { const f = state.flash[key]; return f && f.end > Date.now() ? f : null; };
+  function startFlash(key) {
+    const dur = state.tickSecs * 1000; if (!dur) return;
+    const now = Date.now(); state.flash[key] = { start: now, dur, end: now + dur };
+    setTimeout(() => { if (state.flash[key] && state.flash[key].end <= Date.now() + 30) { delete state.flash[key]; render(); } }, dur + 15);
+  }
+  function fillHtml(key) {
+    const f = flashing(key); if (!f) return '';
+    return `<span class="fill" style="animation-duration:${f.dur}ms;animation-delay:-${Date.now() - f.start}ms"></span>`;
+  }
+  const flashCls = (key) => { const f = flashing(key); return f ? 'flash' + (Date.now() - f.start < 200 ? ' flash-pop' : '') : ''; };
+
+  function closeGroups(ids) {
+    const bodies = RM || route() !== '' ? [] : ids.map((id) => $('app').querySelector(`[data-gsec="${CSS.escape(id)}"] .g-body`)).filter(Boolean);
+    const done = () => { ids.forEach((id) => delete state.open[id]); render(); };
+    if (!bodies.length) return done();
+    bodies.forEach((b) => {
+      b.style.overflow = 'hidden';
+      b.animate([{ height: b.offsetHeight + 'px', opacity: 1 }, { height: '0px', opacity: 0, marginTop: '-12px' }], { duration: 240, easing: 'cubic-bezier(.4, 0, .8, .4)', fill: 'forwards' });
+      const tw = b.parentNode.querySelector('.tw'); if (tw) tw.style.transform = 'rotate(-90deg)';
+    });
+    setTimeout(done, 235);
+  }
   function toggleGroup(id) {
-    if (state.open[id]) delete state.open[id]; else state.open[id] = true;
-    armClose(); render();
+    if (state.open[id]) closeGroups([id]);
+    else { state.open[id] = true; state.justOpened = id; render(); }
+    armClose();
   }
   let closeTimer = null;
   function armClose() {
     clearTimeout(closeTimer);
-    if (state.autoClose > 0 && Object.keys(state.open).length) closeTimer = setTimeout(() => { state.open = {}; render(); }, state.autoClose * 1000);
+    if (state.autoClose > 0 && Object.keys(state.open).length) closeTimer = setTimeout(() => closeGroups(Object.keys(state.open)), state.autoClose * 1000);
   }
   document.addEventListener('pointerdown', armClose, true);
   function commitOrder() {
@@ -434,11 +480,13 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
     const t = totals(state.weekLog), lead = leader(t), diff = Math.abs(t.p1 - t.p2);
     const todayLog = state.weekLog.filter((e) => e.day === state.today).sort((a, b) => b.ts - a.ts);
     const tt = totals(todayLog);
+    const prevT = state.lastTotals, newLead = state.lastLead !== lead;
+    state.lastTotals = t; state.lastLead = lead;
     const player = (p) => `
-      <div class="pl ${p} ${lead === p ? 'lead' : ''}">
+      <div class="pl ${p} ${lead === p ? 'lead' : ''} ${lead === p && newLead ? 'new' : ''}">
         <div class="crown">${lead === p ? CROWN : ''}</div>
         <div class="name"><span class="dot"></span><span>${esc(state.names[p])}</span></div>
-        <div class="pts">${t[p]}</div>
+        <div class="pts ${prevT && prevT[p] !== t[p] ? 'bump' : ''}">${t[p]}</div>
         <div class="sub">vandaag +${tt[p]}</div>
       </div>`;
     const mid = lead
@@ -449,10 +497,11 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
       const both = p === 'both';
       const n = todayLog.filter((e) => e.task === task.id && (both ? e.together && e.who === 'p1' : !e.together && e.who === p)).length;
       const label = both ? 'Samen' : state.names[p];
-      return `<button class="${p} ${n ? 'done' : ''}" data-act="do" data-task="${esc(task.id)}" data-who="${p}" aria-label="${both ? 'Samen gedaan' : esc(label) + ' deed'}: ${esc(task.name)}">
-        ${both ? '' : '<span class="dot"></span>'}<span class="n">${esc(label)}</span>${n ? `<span class="cnt">✓${n > 1 ? ' ×' + n : ''}</span>` : ''}</button>`;
+      const key = `t:${task.id}|${p}`;
+      return `<button class="${p} ${n ? 'done' : ''} ${flashCls(key)}" data-act="do" data-task="${esc(task.id)}" data-who="${p}" data-key="${esc(key)}" aria-label="${both ? 'Samen gedaan' : esc(label) + ' deed'}: ${esc(task.name)}">
+        ${fillHtml(key)}${both ? '' : '<span class="dot"></span>'}<span class="n">${esc(label)}</span>${n ? `<span class="cnt">✓${n > 1 ? ' ×' + n : ''}</span>` : ''}</button>`;
     };
-    const cards = (list) => `<div class="tasks">${list.map((task) => `<article class="task"><div class="t-top"><div class="t-name">${esc(task.name)}</div><div class="pill">${pt(task.points)}</div></div>
+    const cards = (list, pop) => `<div class="tasks">${list.map((task, i) => `<article class="task ${pop ? 'pop' : ''}" style="--i:${i + 1}"><div class="t-top"><div class="t-name">${esc(task.name)}</div><div class="pill">${pt(task.points)}</div></div>
         <div class="who">${btn(task, 'p1')}${btn(task, 'both')}${btn(task, 'p2')}</div></article>`).join('')}</div>`;
     const loose = tasksIn(''), groups = sortedGroups();
     const groupHtml = groups.map((g) => {
@@ -461,19 +510,21 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
         const both = p === 'both';
         const done = ts.length && ts.every((t) => todayLog.some((e) => e.task === t.id && (both ? e.together : !e.together && e.who === p)));
         const label = both ? 'Samen' : state.names[p];
-        return `<button class="${p} ${done ? 'done' : ''}" data-act="doall" data-group="${esc(g.id)}" data-who="${p}" aria-label="${both ? 'Samen alles gedaan' : esc(label) + ' deed alles'} in ${esc(g.name)}">
-          ${both ? '' : '<span class="dot"></span>'}<span class="n">${esc(label)}</span>${done ? '<span class="cnt">✓</span>' : ''}</button>`;
+        const key = `g:${g.id}|${p}`;
+        return `<button class="${p} ${done ? 'done' : ''} ${flashCls(key)}" data-act="doall" data-group="${esc(g.id)}" data-who="${p}" data-key="${esc(key)}" aria-label="${both ? 'Samen alles gedaan' : esc(label) + ' deed alles'} in ${esc(g.name)}">
+          ${fillHtml(key)}${both ? '' : '<span class="dot"></span>'}<span class="n">${esc(label)}</span>${done ? '<span class="cnt">✓</span>' : ''}</button>`;
       };
-      return `<section class="group"><div class="g-head">
+      const pop = state.justOpened === g.id;
+      return `<section class="group" data-gsec="${esc(g.id)}"><div class="g-head">
           <button class="g-toggle" data-act="toggle" data-id="${esc(g.id)}" aria-expanded="${open}"><span class="tw" aria-hidden="true">▾</span><span class="g-name">${esc(g.name)}</span></button>
           <div class="pill">${ts.length} ${ts.length === 1 ? 'taak' : 'taken'} · ${pt(sumPts)}</div></div>
-        ${open && ts.length ? `<div class="g-all"><span>Hele map in één keer</span><div class="who">${all('p1')}${all('both')}${all('p2')}</div></div>` : ''}
-        ${!open ? '' : ts.length ? cards(ts) : '<div class="empty">Nog geen taken in deze map. Zet ze erin via Beheer.</div>'}</section>`;
+        ${!open ? '' : `<div class="g-body">${ts.length ? `<div class="g-all ${pop ? 'pop' : ''}"><span>Hele map in één keer</span><div class="who">${all('p1')}${all('both')}${all('p2')}</div></div>${cards(ts, pop)}`
+          : '<div class="empty">Nog geen taken in deze map. Zet ze erin via Beheer.</div>'}</div>`}</section>`;
     }).join('');
     const taskHtml = (loose.length ? cards(loose) : '') + groupHtml;
     const logRows = todayLog.filter((e) => !(e.pair && e.who === 'p2')).map((e) => {
       const d = new Date(e.ts);
-      return `<div class="row ${e.pair ? '' : e.who}"><span class="time">${pad(d.getHours())}:${pad(d.getMinutes())}</span><span class="dot ${e.pair ? 'duo' : ''}"></span>
+      return `<div class="row ${e.pair ? '' : e.who} ${Date.now() - e.ts < 350 ? 'row-in' : ''}"><span class="time">${pad(d.getHours())}:${pad(d.getMinutes())}</span><span class="dot ${e.pair ? 'duo' : ''}"></span>
         <span class="grow"><b>${e.pair ? 'Samen' : esc(state.names[e.who] || '?')}</b> · ${esc(e.name)}</span><span class="plus">+${e.points}${e.pair ? ' ieder' : ''}</span>
         ${Date.now() - e.ts < 60000 ? `<button class="btn" data-act="undo" data-id="${esc(e.id)}">Ongedaan maken</button>` : ''}</div>`;
     }).join('');
@@ -617,6 +668,8 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
       <div class="stack" style="gap:12px"><div class="sec-head"><h3>Taken en mappen</h3><p>Sleep aan de zes puntjes om de volgorde te wijzigen of een taak in een andere map te zetten</p></div>
         ${blocks}</div>
       ${fix}
+      <div class="panel"><h3>Aftik-timer</h3><div class="row" style="padding:0;border:0;flex-wrap:wrap"><label for="tick-secs" class="grow" style="color:var(--ink-2);flex:1 1 240px">Na een tik kleurt het vakje en loopt het in deze tijd leeg. Zolang kun je dat vakje niet nog een keer aantikken.</label>
+        <select id="tick-secs">${[[1, '1 seconde'], [2, '2 seconden'], [3, '3 seconden'], [5, '5 seconden'], [10, '10 seconden'], [0, 'Uit']].map(([v, l]) => `<option value="${v}" ${v === state.tickSecs ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
       <div class="panel"><h3>Mappen vanzelf sluiten</h3><div class="row" style="padding:0;border:0;flex-wrap:wrap"><label for="auto-close" class="grow" style="color:var(--ink-2);flex:1 1 240px">Een geopende map op het hoofdscherm klapt weer dicht als er zo lang niets is aangetikt.</label>
         <select id="auto-close">${[[15, '15 seconden'], [30, '30 seconden'], [60, '1 minuut'], [120, '2 minuten'], [300, '5 minuten'], [0, 'Nooit']].map(([v, l]) => `<option value="${v}" ${v === state.autoClose ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
       <div class="panel"><h3>Pincode</h3><div class="row" style="padding:0;border:0"><span class="grow" style="color:var(--ink-2)">Beheer vergrendelt weer zodra je naar een ander scherm gaat.</span>
@@ -637,6 +690,20 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
     document.querySelectorAll('nav a').forEach((a) => a.dataset.view === v ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
     $('app').innerHTML = v === 'beheer' ? viewAdmin() : v === 'terugkijken' ? viewHistory() : viewToday();
     for (const id in keep) if ($(id)) $(id).value = keep[id];
+    const vkey = v + '|' + (state.hist || '') + '|' + (v === 'beheer' ? `${!!padOpen()}${state.pinStep || ''}` : '');
+    if (vkey !== state.lastView) {
+      if (state.lastView !== undefined && !RM) $('app').animate([{ opacity: 0, transform: 'translateY(16px) scale(.98)' }, { opacity: 1, transform: 'none' }], { duration: 380, easing: SPRING });
+      state.lastView = vkey;
+    }
+    if (state.justOpened) {
+      const sec = $('app').querySelector(`[data-gsec="${CSS.escape(state.justOpened)}"]`), body = sec && sec.querySelector('.g-body');
+      state.justOpened = null;
+      if (body && !RM) {
+        body.style.overflow = 'hidden';
+        body.animate([{ height: '0px', opacity: 0 }, { height: body.offsetHeight + 'px', opacity: 1 }], { duration: 460, easing: SPRING }).onfinish = () => { body.style.overflow = ''; };
+        const tw = sec.querySelector('.tw'); if (tw) tw.animate([{ transform: 'rotate(-90deg)' }, { transform: 'rotate(0deg)' }], { duration: 420, easing: 'cubic-bezier(.3, 1.7, .5, 1)' });
+      }
+    }
     if (fid && $(fid) && $(fid) !== document.activeElement) { $(fid).focus(); if (pos) try { $(fid).setSelectionRange(pos[0], pos[1]); } catch (e) {} }
   }
 
@@ -655,11 +722,11 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
     else if (a === 'import-ask') { state.confirmImport = true; render(); }
     else if (a === 'import-no') { state.confirmImport = false; render(); }
     else if (a === 'toggle') toggleGroup(b.dataset.id);
-    else if (a === 'doall') doAll(b.dataset.group, b.dataset.who);
+    else if (a === 'doall') { if (!flashing(b.dataset.key)) { startFlash(b.dataset.key); doAll(b.dataset.group, b.dataset.who); } }
     else if (a === 'gdel') { state.confirmDelG = b.dataset.id; render(); }
     else if (a === 'gdel-no') { state.confirmDelG = null; render(); }
     else if (a === 'gdel-yes') { state.confirmDelG = null; deleteGroup(b.dataset.id); }
-    else if (a === 'do') { const t = state.tasks.find((x) => x.id === b.dataset.task); if (t) addEntry(t, b.dataset.who); }
+    else if (a === 'do') { const t = state.tasks.find((x) => x.id === b.dataset.task); if (t && !flashing(b.dataset.key)) { startFlash(b.dataset.key); addEntry(t, b.dataset.who); } }
     else if (a === 'undo') removeEntry(b.dataset.id);
     else if (a === 'open') openWeek(b.dataset.key);
     else if (a === 'back') { state.hist = null; state.histLog = null; render(); }
@@ -671,6 +738,7 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
   });
   $('app').addEventListener('change', (ev) => {
     const i = ev.target;
+    if (i.id === 'tick-secs') { state.tickSecs = Number(i.value); persist(); return; }
     if (i.id === 'auto-close') { state.autoClose = Number(i.value); persist(); return; }
     if (i.id === 'fix-week') { state.fixWeek = i.value; render(); return; }
     if (i.id === 'import-file') { state.confirmImport = false; if (i.files[0]) importData(i.files[0]); else render(); return; }

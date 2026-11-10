@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Huishoudpunten</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Huishoudpunten">
+<meta name="theme-color" content="#eef1f6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f131b" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%232a78d6'/%3E%3Cpath fill='%23f2b824' d='M5 16h14l1.2-8-4.4 3.3L12 5.5 8.2 11.3 3.8 8z'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
+<style>
+/* Layout: scorebord als vaste kop van het scherm, daaronder een raster van grote tik-rijen voor de tablet. */
+:root {
+  --bg: #eef1f6; --surface: #fbfcfe; --surface-2: #e4e9f1;
+  --ink: #131a2a; --ink-2: #4a5468; --muted: #6f798c; --line: #d5dbe6;
+  --p1: #2a78d6; --p2: #eb6834; --gold: #dc9c00; --danger: #c93636; --on-fill: #ffffff;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r: 18px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f131b; --surface: #181d28; --surface-2: #232a38;
+    --ink: #eef1f6; --ink-2: #b9c1d0; --muted: #8e98aa; --line: #2e3646;
+    --p1: #3987e5; --p2: #d95926; --gold: #f2b824; --danger: #e66767; --on-fill: #ffffff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f131b; --surface: #181d28; --surface-2: #232a38;
+  --ink: #eef1f6; --ink-2: #b9c1d0; --muted: #8e98aa; --line: #2e3646;
+  --p1: #3987e5; --p2: #d95926; --gold: #f2b824; --danger: #e66767; --on-fill: #ffffff;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+body { margin: 0;
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.4;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: calc(16px + env(safe-area-inset-top, 0px)) calc(40px + env(safe-area-inset-bottom, 0px)); -webkit-tap-highlight-color: transparent;
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+.wrap, .stack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; touch-action: manipulation; }
+:focus-visible { outline: 3px solid var(--p1); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
+.p1 { --pc: var(--p1); } .p2 { --pc: var(--p2); }
+
+/* kop */
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.top h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+.top .week { color: var(--ink-2); font-size: 15px; }
+nav { display: flex; background: var(--surface-2); border-radius: 999px; padding: 4px; gap: 2px; }
+nav a { text-decoration: none; color: var(--ink-2); font-weight: 500; padding: 10px 18px; border-radius: 999px; min-height: 44px; display: flex; align-items: center; }
+nav a[aria-current="page"] { background: var(--surface); color: var(--ink); font-weight: 700; box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+
+.note { background: var(--surface-2); border-radius: 12px; padding: 10px 14px; color: var(--ink-2); font-size: 15px; }
+
+/* scorebord */
+.score { background: var(--surface); border: 1px solid var(--line); border-radius: 26px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.duel { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; }
+.pl { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; text-align: center; }
+.crown { height: 34px; display: flex; align-items: flex-end; }
+.crown svg { width: 40px; height: 34px; fill: var(--gold); }
+.lead .crown svg { animation: drop .5s cubic-bezier(.2,1.6,.4,1); }
+@keyframes drop { from { transform: translateY(-14px) rotate(-12deg); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .lead .crown svg { animation: none; } }
+.pl .name { font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 8px; max-width: 100%; }
+.pl .name span:last-child { overflow-wrap: anywhere; }
+.dot { width: 14px; height: 14px; border-radius: 50%; background: var(--pc); flex: none; }
+.pts { font-family: var(--display); font-weight: 800; font-size: clamp(56px, 11vw, 96px); line-height: 1; letter-spacing: -0.03em; }
+.pl .sub { color: var(--muted); font-size: 15px; }
+.mid { text-align: center; color: var(--ink-2); font-size: 15px; max-width: 150px; }
+.mid b { display: block; font-family: var(--display); font-size: 20px; color: var(--ink); }
+.balance { display: flex; gap: 2px; height: 12px; }
+.balance i { display: block; height: 100%; background: var(--pc); border-radius: 6px; min-width: 6px; transition: flex-grow .4s; }
+.balance.empty i { background: var(--surface-2); }
+
+/* taken */
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sec-head h2 { font-size: 22px; font-weight: 700; }
+.sec-head p { margin: 0; color: var(--muted); font-size: 15px; }
+.tasks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 12px; }
+.task { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.task .t-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.task .t-name { font-weight: 700; font-size: 19px; overflow-wrap: anywhere; min-width: 0; }
+.pill { flex: none; font-family: var(--display); font-weight: 700; background: var(--surface-2); border-radius: 999px; padding: 4px 12px; font-size: 15px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.who { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.who button { min-height: 56px; border-radius: 14px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; min-width: 0;
+  background: color-mix(in srgb, var(--pc) 13%, var(--surface)); border: 2px solid color-mix(in srgb, var(--pc) 45%, var(--surface)); transition: transform .08s; }
+.who button:active { transform: scale(.96); }
+.who button span.n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.who button.done { background: var(--pc); border-color: var(--pc); color: var(--on-fill); }
+.who button.done .dot { background: var(--on-fill); }
+.who .cnt { font-variant-numeric: tabular-nums; flex: none; }
+
+/* lijsten */
+.list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--line); min-width: 0; }
+.row:first-child { border-top: 0; }
+.row .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.row .time { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; flex: none; }
+.row .plus { font-family: var(--display); font-weight: 700; flex: none; font-variant-numeric: tabular-nums; }
+.btn { min-height: 44px; padding: 8px 16px; border-radius: 12px; background: var(--surface-2); font-weight: 500; flex: none; }
+.btn.primary { background: var(--ink); color: var(--bg); font-weight: 700; }
+.btn.danger { color: var(--danger); }
+.btn.solid-danger { background: var(--danger); color: var(--on-fill); font-weight: 700; }
+.empty { padding: 22px 16px; color: var(--muted); text-align: center; }
+
+/* terugkijken */
+.weekrow { width: 100%; text-align: left; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 14px; border-top: 1px solid var(--line); min-height: 60px; }
+.weekrow:first-child { border-top: 0; }
+.weekrow:hover { background: var(--surface-2); }
+.weekrow .wk b { display: block; font-family: var(--display); }
+.weekrow .wk span { color: var(--muted); font-size: 14px; }
+.weekrow .sc { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; min-width: 0; }
+.weekrow .sc b { font-family: var(--display); font-size: 20px; }
+.weekrow .sc svg { width: 20px; height: 17px; fill: var(--gold); flex: none; }
+.weekrow .sc .nm { color: var(--ink-2); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chev { color: var(--muted); font-size: 22px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.panel h3 { font-size: 18px; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; color: var(--ink-2); font-size: 15px; }
+.legend span { display: flex; align-items: center; gap: 6px; }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart text { font-family: var(--body); fill: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.chart text.val { fill: var(--ink-2); font-weight: 700; }
+.chart text.today { fill: var(--ink); font-weight: 700; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .base { stroke: var(--muted); stroke-width: 1; }
+.chart .bar { fill: var(--pc); }
+.chart .hit { fill: transparent; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); padding: 6px 10px; border-radius: 8px; font-size: 14px; transform: translate(-50%, -100%); white-space: nowrap; z-index: 2; }
+.tot { display: grid; grid-template-columns: minmax(70px, auto) 1fr; gap: 10px 12px; align-items: center; }
+.tot .nm { font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.tot .nm svg { width: 20px; height: 17px; fill: var(--gold); }
+.tot .track { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.tot .track i { display: block; height: 26px; background: var(--pc); border-radius: 0 6px 6px 0; min-width: 3px; }
+.tot .track b { font-family: var(--display); font-size: 20px; font-variant-numeric: tabular-nums; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 12px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 10px; border-top: 1px solid var(--line); }
+thead th { border-top: 0; color: var(--muted); font-weight: 500; font-size: 14px; }
+td.num, th.num { text-align: right; }
+.alltime { display: flex; gap: 10px; flex-wrap: wrap; }
+.alltime .chip { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; display: flex; align-items: center; gap: 8px; }
+.alltime svg { width: 20px; height: 17px; fill: var(--gold); }
+
+/* beheer */
+.field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.field label { font-size: 14px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--bg); padding: 8px 12px; min-width: 0; }
+.names { display: flex; gap: 12px; flex-wrap: wrap; }
+.names .field { flex: 1 1 220px; }
+.step { display: flex; align-items: center; gap: 4px; flex: none; }
+.step button { width: 44px; height: 44px; border-radius: 12px; background: var(--surface-2); font-size: 22px; font-weight: 700; line-height: 1; }
+.step output { width: 34px; text-align: center; font-family: var(--display); font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums; }
+.arow { flex-wrap: wrap; }
+.arow input { flex: 1 1 200px; }
+.addform { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.addform .field { flex: 1 1 220px; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 12px 18px; border-radius: 12px; z-index: 20; max-width: calc(100% - 32px); }
+.pin { align-self: center; width: min(100%, 340px); display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: 26px; padding: 24px 20px; }
+.pin h2 { font-size: 22px; } .pin p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.dots { display: flex; gap: 14px; padding: 6px 0; }
+.dots i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--muted); }
+.dots i.on { background: var(--ink); border-color: var(--ink); }
+.pinmsg { min-height: 22px; color: var(--danger); font-size: 15px; font-weight: 500; }
+.keys { display: grid; grid-template-columns: repeat(3, 76px); gap: 12px; justify-content: center; }
+.keys button { height: 68px; border-radius: 18px; background: var(--surface-2); font-family: var(--display); font-weight: 700; font-size: 26px; }
+.keys button:active { transform: scale(.94); }
+@media (max-width: 520px) {
+  .mid { grid-column: 1 / -1; grid-row: 2; max-width: none; }
+  .duel { grid-template-columns: 1fr 1fr; }
+  .weekrow { grid-template-columns: 1fr 1fr auto; }
+  .weekrow .wk { grid-column: 1 / -1; }
+  nav { width: 100%; } nav a { flex: 1; justify-content: center; padding: 10px 8px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Huishoudpunten</h1>
+      <div class="week" id="weeklabel"></div>
+    </div>
+    <nav aria-label="Schermen">
+      <a href="#" data-view="">Deze week</a>
+      <a href="#terugkijken" data-view="terugkijken">Terugkijken</a>
+      <a href="#beheer" data-view="beheer">Beheer</a>
+    </nav>
+  </header>
+  <div id="banner" class="note" hidden></div>
+  <main id="app" class="stack"></main>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  const CROWN = '<svg viewBox="0 0 24 20" aria-label="Loopt voorop"><path d="M3 15h18l1.6-10.5-5.8 4.3L12 1.5 7.2 8.8 1.4 4.5z"/><rect x="3" y="16.5" width="18" height="2.5" rx="1.2"/></svg>';
+  const PIDS = ['p1', 'p2'];
+  const DAYS = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'];
+  const MONTHS = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pad = (n) => String(n).padStart(2, '0');
+  const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const pt = (n) => n === 1 ? '1 punt' : `${n} punten`;
+
+  function weekInfo(date) {
+    const t = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const mon = addDays(t, -((t.getDay() + 6) % 7));
+    const year = addDays(mon, 3).getFullYear();
+    const w1 = week1Monday(year);
+    const week = Math.round((mon - w1) / 6048e5) + 1;
+    return { key: `${year}-W${pad(week)}`, year, week, mon };
+  }
+  function week1Monday(year) { const j = new Date(year, 0, 4); return addDays(j, -((j.getDay() + 6) % 7)); }
+  function weekFromKey(key) {
+    const [y, w] = key.split('-W').map(Number);
+    return { key, year: y, week: w, mon: addDays(week1Monday(y), (w - 1) * 7) };
+  }
+  function rangeLabel(mon) {
+    const sun = addDays(mon, 6);
+    return mon.getMonth() === sun.getMonth()
+      ? `${mon.getDate()}–${sun.getDate()} ${MONTHS[sun.getMonth()]}`
+      : `${mon.getDate()} ${MONTHS[mon.getMonth()]} – ${sun.getDate()} ${MONTHS[sun.getMonth()]}`;
+  }
+
+  const state = {
+    ready: false,
+    names: { p1: 'Speler 1', p2: 'Speler 2' },
+    tasks: [], weekLog: [], logs: {},
+    cur: weekInfo(new Date()), today: dayKey(new Date()),
+    hist: null, histLog: null, confirmDel: null, newPts: 1,
+    pin: '', cfgReady: false, unlocked: false, entry: '', pinStep: null, pinFirst: '', pinMsg: '',
+  };
+
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 3500);
+  }
+  const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  const logPath = (key) => `weeks/${key}/log`;
+  const totals = (log) => { const t = { p1: 0, p2: 0 }; for (const e of log) if (e.who in t) t[e.who] += e.points || 0; return t; };
+  const leader = (t) => t.p1 > t.p2 ? 'p1' : t.p2 > t.p1 ? 'p2' : null;
+  const sortedTasks = () => [...state.tasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  /* ---------- opslag: alles staat in de browser van dit apparaat ---------- */
+  const KEY = 'huishoudpunten-v1';
+  function snapshot() { return { v: 1, names: state.names, pin: state.pin, tasks: state.tasks, logs: state.logs }; }
+  function apply(d) {
+    state.names = { p1: (d.names && d.names.p1) || 'Speler 1', p2: (d.names && d.names.p2) || 'Speler 2' };
+    state.pin = typeof d.pin === 'string' ? d.pin : '';
+    state.tasks = Array.isArray(d.tasks) ? d.tasks : [];
+    state.logs = d.logs && typeof d.logs === 'object' ? d.logs : {};
+    state.weekLog = state.logs[state.cur.key] || (state.logs[state.cur.key] = []);
+  }
+  function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify(snapshot())); banner(''); }
+    catch (e) { banner('Opslaan lukt niet in deze browser (bijvoorbeeld in een privévenster). Wat je afvinkt gaat verloren zodra je de pagina sluit.'); }
+    render();
+  }
+  function load() {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+    if (d) apply(d);
+    else apply({ tasks: [['Vaatwasser uitruimen', 1], ['Stofzuigen', 2], ['Bad poetsen', 3]].map(([name, points], i) => ({ id: 't' + i, name, points, order: i })) });
+    state.ready = state.cfgReady = true;
+  }
+
+  /* ---------- acties ---------- */
+  function addEntry(task, who) {
+    state.weekLog.push({ id: uid(), task: task.id, name: task.name, points: task.points, who, day: state.today, ts: Date.now() });
+    persist();
+  }
+  function removeEntry(id) {
+    const i = state.weekLog.findIndex((e) => e.id === id);
+    if (i >= 0) state.weekLog.splice(i, 1);
+    persist();
+  }
+  function saveTask(id, patch) { const t = state.tasks.find((x) => x.id === id); if (t) { Object.assign(t, patch); persist(); } }
+  function addTask(name, points) { state.tasks.push({ id: uid(), name, points, order: Date.now() }); persist(); }
+  function deleteTask(id) { state.tasks = state.tasks.filter((t) => t.id !== id); persist(); }
+  function saveNames(names) { state.names = names; persist(); }
+  function savePin(pin) { state.pin = pin; persist(); }
+  function exportData() {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(snapshot(), null, 2)], { type: 'application/json' }));
+    a.download = `huishoudpunten-${state.today}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+  function importData(file) {
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const d = JSON.parse(r.result);
+        if (!d || !Array.isArray(d.tasks) || typeof d.logs !== 'object') throw 0;
+        apply(d); persist(); toast('Back-up teruggezet.');
+      } catch (e) { toast('Dit bestand is geen geldige back-up van Huishoudpunten.'); }
+    };
+    r.readAsText(file);
+  }
+  function pressKey(k) {
+    state.pinMsg = '';
+    if (k === 'back') state.entry = state.entry.slice(0, -1);
+    else if (state.entry.length < 4) state.entry += k;
+    if (state.entry.length === 4) {
+      const e = state.entry, step = state.pinStep || (state.pin ? 'enter' : 'set');
+      state.entry = '';
+      if (step === 'enter') { if (e === state.pin) state.unlocked = true; else state.pinMsg = 'Onjuiste pincode. Probeer het opnieuw.'; }
+      else if (step === 'set') { state.pinFirst = e; state.pinStep = 'confirm'; }
+      else if (e === state.pinFirst) { state.pinStep = null; state.unlocked = true; savePin(e); toast('Pincode opgeslagen.'); }
+      else { state.pinStep = 'set'; state.pinMsg = 'De pincodes komen niet overeen. Begin opnieuw.'; }
+    }
+    render();
+  }
+  function pinPad(title, sub, cancel) {
+    const dots = [0, 1, 2, 3].map((i) => `<i class="${i < state.entry.length ? 'on' : ''}"></i>`).join('');
+    const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((k) => `<button data-act="key" data-k="${k}">${k}</button>`).join('');
+    return `<section class="pin" aria-label="Pincode">
+      <h2>${title}</h2><p>${sub}</p>
+      <div class="dots" aria-label="${state.entry.length} van 4 cijfers ingevoerd">${dots}</div>
+      <div class="pinmsg" role="alert">${esc(state.pinMsg)}</div>
+      <div class="keys">${keys}<span></span><button data-act="key" data-k="0">0</button><button data-act="key" data-k="back" aria-label="Laatste cijfer wissen">⌫</button></div>
+      ${cancel ? '<button class="btn" data-act="pin-cancel">Annuleren</button>' : ''}
+    </section>`;
+  }
+  const padOpen = () => route() === 'beheer' && state.cfgReady && (state.pinStep || !state.pin || !state.unlocked);
+
+  /* ---------- schermen ---------- */
+  function viewToday() {
+    const t = totals(state.weekLog), lead = leader(t), diff = Math.abs(t.p1 - t.p2);
+    const todayLog = state.weekLog.filter((e) => e.day === state.today).sort((a, b) => b.ts - a.ts);
+    const tt = totals(todayLog);
+    const player = (p) => `
+      <div class="pl ${p} ${lead === p ? 'lead' : ''}">
+        <div class="crown">${lead === p ? CROWN : ''}</div>
+        <div class="name"><span class="dot"></span><span>${esc(state.names[p])}</span></div>
+        <div class="pts">${t[p]}</div>
+        <div class="sub">vandaag +${tt[p]}</div>
+      </div>`;
+    const mid = lead
+      ? `<b>${esc(state.names[lead])} loopt voorop</b>met ${pt(diff)} verschil`
+      : (t.p1 + t.p2 === 0 ? '<b>Nieuwe week</b>nog geen punten' : '<b>Gelijkspel</b>allebei evenveel punten');
+    const sum = t.p1 + t.p2;
+    const tasks = sortedTasks();
+    const taskCards = tasks.map((task) => {
+      const btn = (p) => {
+        const n = todayLog.filter((e) => e.task === task.id && e.who === p).length;
+        return `<button class="${p} ${n ? 'done' : ''}" data-act="do" data-task="${esc(task.id)}" data-who="${p}" aria-label="${esc(state.names[p])} deed: ${esc(task.name)}">
+          <span class="dot"></span><span class="n">${esc(state.names[p])}</span>${n ? `<span class="cnt">✓${n > 1 ? ' ×' + n : ''}</span>` : ''}</button>`;
+      };
+      return `<article class="task"><div class="t-top"><div class="t-name">${esc(task.name)}</div><div class="pill">${pt(task.points)}</div></div>
+        <div class="who">${btn('p1')}${btn('p2')}</div></article>`;
+    }).join('');
+    const logRows = todayLog.map((e) => {
+      const d = new Date(e.ts);
+      return `<div class="row ${e.who}"><span class="time">${pad(d.getHours())}:${pad(d.getMinutes())}</span><span class="dot"></span>
+        <span class="grow"><b>${esc(state.names[e.who] || '?')}</b> · ${esc(e.name)}</span><span class="plus">+${e.points}</span>
+        <button class="btn" data-act="undo" data-id="${esc(e.id)}">Ongedaan maken</button></div>`;
+    }).join('');
+    return `
+      <section class="score" aria-label="Stand van deze week">
+        <div class="duel">${player('p1')}<div class="mid">${mid}</div>${player('p2')}</div>
+        <div class="balance ${sum ? '' : 'empty'}"><i class="p1" style="flex-grow:${sum ? t.p1 : 1}"></i><i class="p2" style="flex-grow:${sum ? t.p2 : 1}"></i></div>
+      </section>
+      <section class="stack" style="gap:12px">
+        <div class="sec-head"><h2>Taken</h2><p>Tik op wie de taak heeft gedaan</p></div>
+        ${!state.ready ? '<div class="list"><div class="empty">Taken laden…</div></div>'
+          : tasks.length ? `<div class="tasks">${taskCards}</div>`
+          : '<div class="list"><div class="empty">Nog geen taken. Voeg ze toe onder <a href="#beheer">Beheer</a>.</div></div>'}
+      </section>
+      <section class="stack" style="gap:12px">
+        <div class="sec-head"><h2>Vandaag gedaan</h2></div>
+        <div class="list">${logRows || '<div class="empty">Vandaag is er nog niets afgevinkt.</div>'}</div>
+      </section>`;
+  }
+
+  function dayChart(log, mon) {
+    const vals = DAYS.map(() => ({ p1: 0, p2: 0 }));
+    const keys = DAYS.map((_, i) => dayKey(addDays(mon, i)));
+    for (const e of log) { const i = keys.indexOf(e.day); if (i >= 0 && e.who in vals[i]) vals[i][e.who] += e.points || 0; }
+    const max = Math.max(1, ...vals.flatMap((v) => [v.p1, v.p2]));
+    const step = [1, 2, 5, 10, 20, 50, 100].find((s) => max / s <= 5) || 200;
+    const top = Math.ceil(max / step) * step;
+    const W = 700, H = 270, L = 34, R = 8, T = 22, B = 34, pw = W - L - R, ph = H - T - B;
+    const y = (v) => T + ph - (v / top) * ph;
+    const band = pw / 7, bw = Math.min(30, band * 0.3);
+    let s = '';
+    for (let v = 0; v <= top; v += step) {
+      s += `<line class="${v ? 'grid' : 'base'}" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+    }
+    vals.forEach((v, i) => {
+      const cx = L + band * i + band / 2;
+      PIDS.forEach((p, k) => {
+        const x = k === 0 ? cx - bw - 1 : cx + 1, h = (v[p] / top) * ph, yy = y(v[p]), r = Math.min(4, h);
+        const tip = `${DAYS[i]} ${addDays(mon, i).getDate()} ${MONTHS[addDays(mon, i).getMonth()]} · ${state.names[p]}: ${pt(v[p])}`;
+        if (v[p] > 0) {
+          s += `<path class="bar ${p}" d="M${x},${T + ph}V${yy + r}q0,-${r} ${r},-${r}h${bw - 2 * r}q${r},0 ${r},${r}V${T + ph}z"/>`;
+          s += `<text class="val" x="${x + bw / 2}" y="${yy - 6}" text-anchor="middle">${v[p]}</text>`;
+        }
+        s += `<rect class="hit" x="${x - 1}" y="${T}" width="${bw + 2}" height="${ph}" data-tip="${esc(tip)}" data-tx="${(x + bw / 2) / W}" data-ty="${(v[p] > 0 ? yy - 22 : T + ph - 8) / H}"/>`;
+      });
+      s += `<text class="${keys[i] === state.today ? 'today' : ''}" x="${cx}" y="${H - 12}" text-anchor="middle">${DAYS[i]} ${addDays(mon, i).getDate()}</text>`;
+    });
+    return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Punten per dag per persoon">${s}</svg></div>`;
+  }
+
+  function viewHistory() {
+    if (state.hist) return viewWeek(state.hist);
+    const map = { [state.cur.key]: totals(state.weekLog) };
+    for (const k of Object.keys(state.logs)) if (state.logs[k].length) map[k] = totals(state.logs[k]);
+    const keys = Object.keys(map).sort().reverse();
+    const wins = { p1: 0, p2: 0 };
+    for (const k of keys) if (k !== state.cur.key) { const l = leader(map[k]); if (l) wins[l]++; }
+    const rows = keys.map((k) => {
+      const w = weekFromKey(k), t = map[k], l = leader(t);
+      const sc = (p) => `<span class="sc ${p}"><span class="dot"></span><b>${t[p] || 0}</b><span class="nm">${esc(state.names[p])}</span>${l === p ? CROWN : ''}</span>`;
+      return `<button class="weekrow" data-act="open" data-key="${k}"><span class="wk"><b>Week ${w.week}${k === state.cur.key ? ' · nu bezig' : ''}</b><span>${rangeLabel(w.mon)} ${w.year}</span></span>${sc('p1')}${sc('p2')}<span class="chev" aria-hidden="true">›</span></button>`;
+    }).join('');
+    return `
+      <div class="sec-head"><h2>Terugkijken</h2><p>Tik op een week voor de grafieken</p></div>
+      <div class="alltime">${PIDS.map((p) => `<div class="chip ${p}">${CROWN}<b>${wins[p]}</b> ${wins[p] === 1 ? 'week' : 'weken'} gewonnen door ${esc(state.names[p])}</div>`).join('')}</div>
+      <div class="list">${rows}</div>`;
+  }
+
+  function viewWeek(key) {
+    const w = weekFromKey(key), isCur = key === state.cur.key;
+    const log = isCur ? state.weekLog : state.histLog;
+    const head = `<div class="sec-head"><h2>Week ${w.week} <span style="color:var(--muted);font-weight:500">· ${rangeLabel(w.mon)} ${w.year}</span></h2>
+      <button class="btn" data-act="back">‹ Alle weken</button></div>`;
+    if (!log) return head + '<div class="list"><div class="empty">Week laden…</div></div>';
+    const t = totals(log), l = leader(t), mx = Math.max(1, t.p1, t.p2);
+    const legend = `<div class="legend">${PIDS.map((p) => `<span class="${p}"><span class="dot"></span>${esc(state.names[p])}</span>`).join('')}</div>`;
+    const tot = PIDS.map((p) => `<div class="nm">${esc(state.names[p])}${l === p ? CROWN : ''}</div><div class="track ${p}"><i style="width:${(t[p] / mx) * 82}%"></i><b>${t[p]}</b></div>`).join('');
+    const per = {};
+    for (const e of log) { const r = per[e.name] || (per[e.name] = { p1: 0, p2: 0, pts: 0 }); if (e.who in r) r[e.who]++; r.pts += e.points || 0; }
+    const names = Object.keys(per).sort((a, b) => per[b].pts - per[a].pts);
+    const table = names.length ? `<div class="tablewrap"><table><thead><tr><th>Taak</th><th class="num">${esc(state.names.p1)}</th><th class="num">${esc(state.names.p2)}</th><th class="num">Punten</th></tr></thead>
+      <tbody>${names.map((n) => `<tr><td>${esc(n)}</td><td class="num">${per[n].p1}×</td><td class="num">${per[n].p2}×</td><td class="num">${per[n].pts}</td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="empty">Deze week is er niets afgevinkt.</div>';
+    const verdict = l ? `${esc(state.names[l])} ${isCur ? 'loopt voorop' : 'won'} met ${pt(Math.abs(t.p1 - t.p2))} verschil` : (t.p1 + t.p2 ? 'Gelijkspel' : 'Geen punten deze week');
+    return `${head}
+      <div class="panel"><h3>Punten per dag</h3>${legend}${dayChart(log, w.mon)}</div>
+      <div class="two">
+        <div class="panel"><h3>Hele week</h3><div class="tot">${tot}</div><div style="color:var(--ink-2)">${verdict}</div></div>
+        <div class="panel"><h3>Wie deed wat</h3>${table}</div>
+      </div>`;
+  }
+
+  function viewAdmin() {
+    const rows = sortedTasks().map((t) => state.confirmDel === t.id
+      ? `<div class="row arow"><span class="grow">“${esc(t.name)}” verwijderen? Eerder verdiende punten blijven staan.</span>
+          <button class="btn solid-danger" data-act="del-yes" data-id="${esc(t.id)}">Verwijderen</button><button class="btn" data-act="del-no">Annuleren</button></div>`
+      : `<div class="row arow"><input type="text" id="tn-${esc(t.id)}" data-task="${esc(t.id)}" value="${esc(t.name)}" maxlength="60" aria-label="Naam van de taak">
+          <div class="step" aria-label="Punten"><button data-act="pts" data-id="${esc(t.id)}" data-d="-1" aria-label="Minder punten">−</button><output>${t.points}</output><button data-act="pts" data-id="${esc(t.id)}" data-d="1" aria-label="Meer punten">+</button></div>
+          <button class="btn danger" data-act="del" data-id="${esc(t.id)}">Verwijderen</button></div>`).join('');
+    if (!state.cfgReady) return '<div class="list"><div class="empty">Beheer laden…</div></div>';
+    if (state.pinStep === 'confirm') return pinPad('Herhaal de pincode', 'Voer dezelfde 4 cijfers nog een keer in.', !!state.pin);
+    if (state.pinStep === 'set' || !state.pin) return pinPad(state.pin ? 'Kies een nieuwe pincode' : 'Kies een pincode voor Beheer', 'Vanaf nu is Beheer alleen te openen met deze 4 cijfers.', !!state.pin);
+    if (!state.unlocked) return pinPad('Beheer is vergrendeld', 'Voer de pincode van 4 cijfers in.', false);
+    return `
+      <div class="sec-head"><h2>Beheer</h2><p>Wijzigingen worden direct opgeslagen</p></div>
+      <div class="panel"><h3>Namen</h3><div class="names">
+        ${PIDS.map((p) => `<div class="field ${p}"><label for="name-${p}"><span class="dot"></span>Speler ${p[1]}</label><input type="text" id="name-${p}" data-name="${p}" value="${esc(state.names[p])}" maxlength="24"></div>`).join('')}
+      </div></div>
+      <div class="panel"><h3>Nieuwe taak</h3><form class="addform" id="addform">
+        <div class="field"><label for="new-name">Naam</label><input type="text" id="new-name" maxlength="60" placeholder="Bijvoorbeeld: ramen lappen"></div>
+        <div class="field" style="flex:none"><label>Punten</label><div class="step"><button type="button" data-act="newpts" data-d="-1" aria-label="Minder punten">−</button><output>${state.newPts}</output><button type="button" data-act="newpts" data-d="1" aria-label="Meer punten">+</button></div></div>
+        <button class="btn primary" type="submit" style="min-height:48px">Toevoegen</button>
+      </form></div>
+      <div class="stack" style="gap:12px"><h3>Taken en punten</h3>
+        <div class="list">${rows || `<div class="empty">${state.ready ? 'Nog geen taken.' : 'Taken laden…'}</div>`}</div></div>
+      <div class="panel"><h3>Pincode</h3><div class="row" style="padding:0;border:0"><span class="grow" style="color:var(--ink-2)">Beheer vergrendelt weer zodra je naar een ander scherm gaat.</span>
+        <button class="btn" data-act="pin-change">Pincode wijzigen</button></div></div>
+      <div class="panel"><h3>Back-up</h3><p style="margin:0;color:var(--ink-2)">Alle punten staan alleen in de browser van dit apparaat. Bewaar af en toe een back-up, of gebruik hem om naar een ander apparaat te verhuizen.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-act="export">Back-up downloaden</button>
+        ${state.confirmImport ? '<span style="align-self:center">Dit vervangt alles op dit apparaat.</span><label class="btn solid-danger" for="import-file" style="display:flex;align-items:center;cursor:pointer">Bestand kiezen</label><button class="btn" data-act="import-no">Annuleren</button>' : '<button class="btn" data-act="import-ask">Back-up terugzetten</button>'}
+        <input type="file" id="import-file" accept="application/json,.json" hidden></div></div>`;
+  }
+
+  function route() { const h = location.hash.replace('#', ''); return h === 'terugkijken' || h === 'beheer' ? h : ''; }
+  function render() {
+    const v = route();
+    const act = document.activeElement, fid = act && act.id, pos = act && act.tagName === 'INPUT' ? [act.selectionStart, act.selectionEnd] : null;
+    const draft = $('new-name') ? $('new-name').value : '';
+    $('weeklabel').textContent = `Week ${state.cur.week} · ${rangeLabel(state.cur.mon)}`;
+    document.querySelectorAll('nav a').forEach((a) => a.dataset.view === v ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
+    $('app').innerHTML = v === 'beheer' ? viewAdmin() : v === 'terugkijken' ? viewHistory() : viewToday();
+    if ($('new-name') && draft) $('new-name').value = draft;
+    if (fid && $(fid) && $(fid) !== document.activeElement) { $(fid).focus(); if (pos) try { $(fid).setSelectionRange(pos[0], pos[1]); } catch (e) {} }
+  }
+
+  /* ---------- events ---------- */
+  $('app').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-act]'); if (!b) return;
+    const a = b.dataset.act;
+    if (a === 'key') pressKey(b.dataset.k);
+    else if (a === 'pin-change') { state.pinStep = 'set'; state.entry = ''; state.pinMsg = ''; render(); }
+    else if (a === 'pin-cancel') { state.pinStep = null; state.entry = ''; state.pinMsg = ''; render(); }
+    else if (a === 'export') exportData();
+    else if (a === 'import-ask') { state.confirmImport = true; render(); }
+    else if (a === 'import-no') { state.confirmImport = false; render(); }
+    else if (a === 'do') { const t = state.tasks.find((x) => x.id === b.dataset.task); if (t) addEntry(t, b.dataset.who); }
+    else if (a === 'undo') removeEntry(b.dataset.id);
+    else if (a === 'open') openWeek(b.dataset.key);
+    else if (a === 'back') { state.hist = null; state.histLog = null; render(); }
+    else if (a === 'pts') { const t = state.tasks.find((x) => x.id === b.dataset.id); if (t) { const n = Math.min(10, Math.max(1, t.points + Number(b.dataset.d))); if (n !== t.points) saveTask(t.id, { points: n }); } }
+    else if (a === 'newpts') { state.newPts = Math.min(10, Math.max(1, state.newPts + Number(b.dataset.d))); render(); }
+    else if (a === 'del') { state.confirmDel = b.dataset.id; render(); }
+    else if (a === 'del-no') { state.confirmDel = null; render(); }
+    else if (a === 'del-yes') { state.confirmDel = null; deleteTask(b.dataset.id); render(); }
+  });
+  $('app').addEventListener('change', (ev) => {
+    const i = ev.target;
+    if (i.id === 'import-file') { state.confirmImport = false; if (i.files[0]) importData(i.files[0]); else render(); return; }
+    if (i.dataset.task) { const name = i.value.trim(); const t = state.tasks.find((x) => x.id === i.dataset.task); if (name && t && name !== t.name) saveTask(t.id, { name }); else if (t) i.value = t.name; }
+    else if (i.dataset.name) { const name = i.value.trim() || state.names[i.dataset.name]; if (name !== state.names[i.dataset.name]) saveNames({ ...state.names, [i.dataset.name]: name }); else i.value = name; }
+  });
+  $('app').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const name = $('new-name').value.trim();
+    if (!name) { toast('Geef de taak eerst een naam.'); $('new-name').focus(); return; }
+    $('new-name').value = ''; const p = state.newPts; state.newPts = 1;
+    addTask(name, p); render();
+  });
+  function showTip(ev) {
+    const h = ev.target.closest && ev.target.closest('[data-tip]');
+    document.querySelectorAll('.tip').forEach((t) => t.remove());
+    if (!h) return;
+    const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = h.dataset.tip;
+    tip.style.left = `clamp(90px, ${h.dataset.tx * 100}%, calc(100% - 90px))`; tip.style.top = `${Math.max(0.12, h.dataset.ty) * 100}%`;
+    h.closest('.chart').appendChild(tip);
+  }
+  $('app').addEventListener('pointerover', showTip);
+  $('app').addEventListener('pointerdown', showTip);
+  document.addEventListener('keydown', (ev) => {
+    if (!padOpen() || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    if (/^[0-9]$/.test(ev.key)) { ev.preventDefault(); pressKey(ev.key); }
+    else if (ev.key === 'Backspace') { ev.preventDefault(); pressKey('back'); }
+  });
+  window.addEventListener('hashchange', () => { state.confirmDel = null; state.confirmImport = false; state.unlocked = false; state.entry = ''; state.pinStep = null; state.pinMsg = ''; if (route() !== 'terugkijken') { state.hist = null; state.histLog = null; } render(); });
+
+  function openWeek(key) { state.hist = key; state.histLog = state.logs[key] || []; render(); }
+  function banner(msg) { const b = $('banner'); b.textContent = msg || ''; b.hidden = !msg; }
+  window.addEventListener('storage', (ev) => { if (ev.key === KEY && ev.newValue) { try { apply(JSON.parse(ev.newValue)); render(); } catch (e) {} } });
+
+  setInterval(() => {
+    const now = new Date(), k = dayKey(now);
+    if (k === state.today) return;
+    state.today = k;
+    const w = weekInfo(now);
+    if (w.key !== state.cur.key) { state.cur = w; state.weekLog = state.logs[w.key] || (state.logs[w.key] = []); }
+    render();
+  }, 30000);
+
+  load();
+  render();
+})();
+</script>
+</body>
+</html>

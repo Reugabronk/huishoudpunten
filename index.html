@@ -159,7 +159,20 @@ nav a[aria-current="page"] { background: var(--surface); color: var(--ink); font
 .chart .grid { stroke: var(--line); stroke-width: 1; }
 .chart .base { stroke: var(--muted); stroke-width: 1; }
 .chart .bar { fill: var(--pc); }
-.chart .hit { fill: transparent; }
+.chart .hit { fill: transparent; cursor: pointer; }
+.chart .daycol { fill: transparent; cursor: pointer; }
+.chart line, .chart text, .chart .bar { pointer-events: none; }
+.chart .daycol.sel { fill: var(--surface-2); }
+.daydetail { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
+.daydetail h4 { margin: 0; font-family: var(--display); font-size: 18px; }
+.daycols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.daycol-p { background: var(--bg); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; border-top: 4px solid var(--pc); }
+.daycol-p .hd { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; }
+.daycol-p .hd b { font-family: var(--display); font-size: 20px; }
+.daycol-p .it { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.daycol-p .it .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.daycol-p .it .time, .daycol-p .none, .hint-line { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.tag { font-size: 12px; font-weight: 700; background: var(--surface-2); border-radius: 999px; padding: 1px 8px; margin-left: 6px; white-space: nowrap; }
 .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); padding: 6px 10px; border-radius: 8px; font-size: 14px; transform: translate(-50%, -100%); white-space: nowrap; z-index: 2; }
 .tot { display: grid; grid-template-columns: minmax(70px, auto) 1fr; gap: 10px 12px; align-items: center; }
 .tot .nm { font-weight: 700; display: flex; align-items: center; gap: 6px; }
@@ -262,6 +275,7 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
   const CROWN = '<svg viewBox="0 0 24 20" aria-label="Loopt voorop"><path d="M3 15h18l1.6-10.5-5.8 4.3L12 1.5 7.2 8.8 1.4 4.5z"/><rect x="3" y="16.5" width="18" height="2.5" rx="1.2"/></svg>';
   const PIDS = ['p1', 'p2'];
   const DAYS = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'];
+  const FULLDAYS = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
   const MONTHS = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -565,7 +579,7 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
       </section>`;
   }
 
-  function dayChart(log, mon) {
+  function dayChart(log, mon, sel) {
     const vals = DAYS.map(() => ({ p1: 0, p2: 0 }));
     const keys = DAYS.map((_, i) => dayKey(addDays(mon, i)));
     for (const e of log) { const i = keys.indexOf(e.day); if (i >= 0 && e.who in vals[i]) vals[i][e.who] += e.points || 0; }
@@ -579,6 +593,7 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
     for (let v = 0; v <= top; v += step) {
       s += `<line class="${v ? 'grid' : 'base'}" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
     }
+    s = keys.map((k, i) => `<rect class="daycol ${k === sel ? 'sel' : ''}" x="${L + band * i + 3}" y="4" width="${band - 6}" height="${H - 8}" rx="10" data-day="${k}"/>`).join('') + s;
     vals.forEach((v, i) => {
       const cx = L + band * i + band / 2;
       PIDS.forEach((p, k) => {
@@ -588,9 +603,9 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
           s += `<path class="bar ${p}" d="M${x},${T + ph}V${yy + r}q0,-${r} ${r},-${r}h${bw - 2 * r}q${r},0 ${r},${r}V${T + ph}z"/>`;
           s += `<text class="val" x="${x + bw / 2}" y="${yy - 6}" text-anchor="middle">${v[p]}</text>`;
         }
-        s += `<rect class="hit" x="${x - 1}" y="${T}" width="${bw + 2}" height="${ph}" data-tip="${esc(tip)}" data-tx="${(x + bw / 2) / W}" data-ty="${(v[p] > 0 ? yy - 22 : T + ph - 8) / H}"/>`;
+        s += `<rect class="hit" x="${x - 1}" y="${T}" width="${bw + 2}" height="${ph}" data-day="${keys[i]}" data-tip="${esc(tip)}" data-tx="${(x + bw / 2) / W}" data-ty="${(v[p] > 0 ? yy - 22 : T + ph - 8) / H}"/>`;
       });
-      s += `<text class="${keys[i] === state.today ? 'today' : ''}" x="${cx}" y="${H - 12}" text-anchor="middle">${DAYS[i]} ${addDays(mon, i).getDate()}</text>`;
+      s += `<text style="pointer-events:none" class="${keys[i] === state.today ? 'today' : ''}" x="${cx}" y="${H - 12}" text-anchor="middle">${DAYS[i]} ${addDays(mon, i).getDate()}</text>`;
     });
     return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Punten per dag per persoon">${s}</svg></div>`;
   }
@@ -629,8 +644,20 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
       <tbody>${names.map((n) => `<tr><td>${esc(n)}</td><td class="num">${per[n].p1}×</td><td class="num">${per[n].p2}×</td><td class="num">${per[n].pts}</td></tr>`).join('')}</tbody></table></div>`
       : '<div class="empty">Deze week is er niets afgevinkt.</div>';
     const verdict = l ? `${esc(state.names[l])} ${isCur ? 'loopt voorop' : 'won'} met ${pt(Math.abs(t.p1 - t.p2))} verschil` : (t.p1 + t.p2 ? 'Gelijkspel' : 'Geen punten deze week');
+    const dkeys = DAYS.map((_, i) => dayKey(addDays(w.mon, i))), di = dkeys.indexOf(state.histDay);
+    let detail = '<div class="hint-line">Tik op een dag in de grafiek om te zien wat jullie die dag allebei hebben gedaan.</div>';
+    if (di >= 0) {
+      const dd = addDays(w.mon, di), dl = log.filter((e) => e.day === state.histDay).sort((a, b) => a.ts - b.ts), dt = totals(dl);
+      const col = (p) => {
+        const items = dl.filter((e) => e.who === p).map((e) => { const d = new Date(e.ts);
+          return `<div class="it"><span class="time">${pad(d.getHours())}:${pad(d.getMinutes())}</span><span class="grow">${esc(e.name)}${e.together ? '<span class="tag">samen</span>' : ''}</span><b>+${e.points}</b></div>`; }).join('');
+        return `<div class="daycol-p ${p}"><div class="hd"><span>${esc(state.names[p])}</span><b>${pt(dt[p])}</b></div>${items || '<div class="none">Niets afgevinkt</div>'}</div>`;
+      };
+      detail = `<div class="daydetail ${state.dayPop ? 'pop' : ''}"><h4>${FULLDAYS[di]} ${dd.getDate()} ${MONTHS[dd.getMonth()]}</h4><div class="daycols">${col('p1')}${col('p2')}</div></div>`;
+    }
+    state.dayPop = false;
     return `${head}
-      <div class="panel"><h3>Punten per dag</h3>${legend}${dayChart(log, w.mon)}</div>
+      <div class="panel"><h3>Punten per dag</h3>${legend}${dayChart(log, w.mon, di >= 0 ? state.histDay : null)}${detail}</div>
       <div class="two">
         <div class="panel"><h3>Hele week</h3><div class="tot">${tot}</div><div style="color:var(--ink-2)">${verdict}</div></div>
         <div class="panel"><h3>Wie deed wat</h3>${table}</div>
@@ -729,6 +756,8 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
 
   /* ---------- events ---------- */
   $('app').addEventListener('click', (ev) => {
+    const dayEl = ev.target.closest('[data-day]');
+    if (dayEl) { state.histDay = state.histDay === dayEl.dataset.day ? null : dayEl.dataset.day; state.dayPop = true; render(); return; }
     const b = ev.target.closest('[data-act]'); if (!b) return;
     const a = b.dataset.act;
     if (a === 'key') pressKey(b.dataset.k);
@@ -843,7 +872,7 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
   });
   window.addEventListener('hashchange', () => { state.confirmDel = null; state.confirmDelG = null; state.confirmImport = false; state.unlocked = false; state.entry = ''; state.pinStep = null; state.pinMsg = ''; if (route() !== 'terugkijken') { state.hist = null; state.histLog = null; } render(); });
 
-  function openWeek(key) { state.hist = key; state.histLog = state.logs[key] || []; render(); }
+  function openWeek(key) { state.histDay = null; state.hist = key; state.histLog = state.logs[key] || []; render(); }
   function banner(msg) { const b = $('banner'); b.textContent = msg || ''; b.hidden = !msg; }
   window.addEventListener('storage', (ev) => { if (ev.key === KEY && ev.newValue) { try { apply(JSON.parse(ev.newValue)); render(); } catch (e) {} } });
 

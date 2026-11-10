@@ -57,7 +57,7 @@ button:active, label.btn:active { transform: scale(.93); transition-duration: .0
 @keyframes rowin { from { opacity: 0; transform: translateY(-14px) scale(.96); } }
 .flash-pop { animation: presspop .45s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes presspop { from { transform: scale(.9); } 55% { transform: scale(1.06); } }
-@keyframes drain { from { transform: scaleY(1); } to { transform: scaleY(0); } }
+@keyframes drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @keyframes toastin { from { opacity: 0; transform: translate(-50%, 16px) scale(.9); } }
 @media (prefers-reduced-motion: reduce) { .pop, .bump, .row-in, .flash-pop, .toast { animation: none !important; } button, .btn, nav a { transition: none; } }
 .sec-head a, .empty a { color: inherit; }
@@ -114,11 +114,13 @@ nav a[aria-current="page"] { background: var(--surface); color: var(--ink); font
 .who button > * { position: relative; z-index: 1; }
 .who button.done { border-color: var(--pc); }
 .who button.both.done { border-color: var(--ink-2); }
-.who button .fill { position: absolute; inset: 0; z-index: 0; background: var(--pc); transform-origin: bottom; animation: drain linear forwards; }
-.who button.both .fill { background: linear-gradient(90deg, var(--p1) 50%, var(--p2) 50%); }
+.who button .fill { position: absolute; inset: 0; z-index: 0; background: var(--pc); transform-origin: left; animation: drain linear forwards; }
+.who button.p2 .fill { transform-origin: right; }
+.who button.both .fill { right: 50%; background: var(--p1); }
+.who button.both .fill.r { left: 50%; right: 0; background: var(--p2); transform-origin: right; }
 .who button.flash { border-style: solid; border-color: var(--pc); cursor: default; }
 .who button.both.flash { border-color: var(--ink-2); }
-.who button.flash .dot { background: var(--on-fill); }
+.who button.flash .dot { box-shadow: 0 0 0 2.5px var(--on-fill); }
 .who .cnt { font-variant-numeric: tabular-nums; flex: none; }
 
 /* lijsten */
@@ -393,7 +395,8 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
   }
   function fillHtml(key) {
     const f = flashing(key); if (!f) return '';
-    return `<span class="fill" style="animation-duration:${f.dur}ms;animation-delay:-${Date.now() - f.start}ms"></span>`;
+    const span = (c) => `<span class="fill ${c}" style="animation-duration:${f.dur}ms;animation-delay:-${Date.now() - f.start}ms"></span>`;
+    return span('') + (key.endsWith('|both') ? span('r') : '');
   }
   const flashCls = (key) => { const f = flashing(key); return f ? 'flash' + (Date.now() - f.start < 200 ? ' flash-pop' : '') : ''; };
 

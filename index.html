@@ -269,7 +269,7 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
   const state = {
     ready: false,
     names: { p1: 'Speler 1', p2: 'Speler 2' },
-    tasks: [], groups: [], weekLog: [], logs: {}, collapsed: {}, confirmDelG: null, dragging: false,
+    tasks: [], groups: [], weekLog: [], logs: {}, open: {}, autoClose: 60, confirmDelG: null, dragging: false,
     cur: weekInfo(new Date()), today: dayKey(new Date()),
     hist: null, histLog: null, confirmDel: null, newPts: 1,
     pin: '', cfgReady: false, unlocked: false, entry: '', pinStep: null, pinFirst: '', pinMsg: '',
@@ -291,12 +291,13 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
 
   /* ---------- opslag: alles staat in de browser van dit apparaat ---------- */
   const KEY = 'huishoudpunten-v1';
-  function snapshot() { return { v: 1, names: state.names, pin: state.pin, tasks: state.tasks, groups: state.groups, logs: state.logs }; }
+  function snapshot() { return { v: 1, names: state.names, pin: state.pin, tasks: state.tasks, groups: state.groups, autoClose: state.autoClose, logs: state.logs }; }
   function apply(d) {
     state.names = { p1: (d.names && d.names.p1) || 'Speler 1', p2: (d.names && d.names.p2) || 'Speler 2' };
     state.pin = typeof d.pin === 'string' ? d.pin : '';
     state.tasks = Array.isArray(d.tasks) ? d.tasks : [];
     state.groups = Array.isArray(d.groups) ? d.groups : [];
+    state.autoClose = typeof d.autoClose === 'number' && d.autoClose >= 0 ? d.autoClose : 60;
     for (const t of state.tasks) if (!state.groups.some((g) => g.id === t.group)) t.group = '';
     state.logs = d.logs && typeof d.logs === 'object' ? d.logs : {};
     state.weekLog = state.logs[state.cur.key] || (state.logs[state.cur.key] = []);
@@ -311,7 +312,6 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
     try { d = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
     if (d) apply(d);
     else apply({ tasks: [['Vaatwasser uitruimen', 1], ['Stofzuigen', 2], ['Bad poetsen', 3]].map(([name, points], i) => ({ id: 't' + i, name, points, order: i })) });
-    try { state.collapsed = JSON.parse(localStorage.getItem(KEY + '-ui') || '{}') || {}; } catch (e) {}
     state.ready = state.cfgReady = true;
   }
 
@@ -351,10 +351,15 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
     setTimeout(render, 61000);
   }
   function toggleGroup(id) {
-    if (state.collapsed[id]) delete state.collapsed[id]; else state.collapsed[id] = true;
-    try { localStorage.setItem(KEY + '-ui', JSON.stringify(state.collapsed)); } catch (e) {}
-    render();
+    if (state.open[id]) delete state.open[id]; else state.open[id] = true;
+    armClose(); render();
   }
+  let closeTimer = null;
+  function armClose() {
+    clearTimeout(closeTimer);
+    if (state.autoClose > 0 && Object.keys(state.open).length) closeTimer = setTimeout(() => { state.open = {}; render(); }, state.autoClose * 1000);
+  }
+  document.addEventListener('pointerdown', armClose, true);
   function commitOrder() {
     $('app').querySelectorAll('[data-drag="group"]').forEach((n, i) => { const g = state.groups.find((x) => x.id === n.dataset.id); if (g) g.order = i; });
     let n = 0;
@@ -436,7 +441,7 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
         <div class="who">${btn(task, 'p1')}${btn(task, 'p2')}</div></article>`).join('')}</div>`;
     const loose = tasksIn(''), groups = sortedGroups();
     const groupHtml = groups.map((g) => {
-      const ts = tasksIn(g.id), open = !state.collapsed[g.id], sumPts = ts.reduce((n, t) => n + t.points, 0);
+      const ts = tasksIn(g.id), open = !!state.open[g.id], sumPts = ts.reduce((n, t) => n + t.points, 0);
       const all = (p) => {
         const done = ts.length && ts.every((t) => todayLog.some((e) => e.task === t.id && e.who === p));
         return `<button class="${p} ${done ? 'done' : ''}" data-act="doall" data-group="${esc(g.id)}" data-who="${p}" aria-label="${esc(state.names[p])} deed alles in ${esc(g.name)}">
@@ -445,7 +450,7 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
       return `<section class="group"><div class="g-head">
           <button class="g-toggle" data-act="toggle" data-id="${esc(g.id)}" aria-expanded="${open}"><span class="tw" aria-hidden="true">▾</span><span class="g-name">${esc(g.name)}</span></button>
           <div class="pill">${ts.length} ${ts.length === 1 ? 'taak' : 'taken'} · ${pt(sumPts)}</div></div>
-        ${ts.length ? `<div class="g-all"><span>Hele map in één keer</span><div class="who">${all('p1')}${all('p2')}</div></div>` : ''}
+        ${open && ts.length ? `<div class="g-all"><span>Hele map in één keer</span><div class="who">${all('p1')}${all('p2')}</div></div>` : ''}
         ${!open ? '' : ts.length ? cards(ts) : '<div class="empty">Nog geen taken in deze map. Zet ze erin via Beheer.</div>'}</section>`;
     }).join('');
     const taskHtml = (loose.length ? cards(loose) : '') + groupHtml;
@@ -461,7 +466,7 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
         <div class="balance ${sum ? '' : 'empty'}"><i class="p1" style="flex-grow:${sum ? t.p1 : 1}"></i><i class="p2" style="flex-grow:${sum ? t.p2 : 1}"></i></div>
       </section>
       <section class="stack" style="gap:12px">
-        <div class="sec-head"><h2>Taken</h2><p>Tik op wie de taak heeft gedaan</p></div>
+        <div class="sec-head"><h2>Taken</h2><p>${groups.length ? 'Tik op een map om hem te openen, en dan op wie de taak deed' : 'Tik op wie de taak heeft gedaan'}</p></div>
         ${!state.ready ? '<div class="list"><div class="empty">Taken laden…</div></div>'
           : taskHtml ? taskHtml
           : '<div class="list"><div class="empty">Nog geen taken. Voeg ze toe onder <a href="#beheer">Beheer</a>.</div></div>'}
@@ -595,6 +600,8 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
       <div class="stack" style="gap:12px"><div class="sec-head"><h3>Taken en mappen</h3><p>Sleep aan de zes puntjes om de volgorde te wijzigen of een taak in een andere map te zetten</p></div>
         ${blocks}</div>
       ${fix}
+      <div class="panel"><h3>Mappen vanzelf sluiten</h3><div class="row" style="padding:0;border:0;flex-wrap:wrap"><label for="auto-close" class="grow" style="color:var(--ink-2);flex:1 1 240px">Een geopende map op het hoofdscherm klapt weer dicht als er zo lang niets is aangetikt.</label>
+        <select id="auto-close">${[[15, '15 seconden'], [30, '30 seconden'], [60, '1 minuut'], [120, '2 minuten'], [300, '5 minuten'], [0, 'Nooit']].map(([v, l]) => `<option value="${v}" ${v === state.autoClose ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
       <div class="panel"><h3>Pincode</h3><div class="row" style="padding:0;border:0"><span class="grow" style="color:var(--ink-2)">Beheer vergrendelt weer zodra je naar een ander scherm gaat.</span>
         <button class="btn" data-act="pin-change">Pincode wijzigen</button></div></div>
       <div class="panel"><h3>Back-up</h3><p style="margin:0;color:var(--ink-2)">Alle punten staan alleen in de browser van dit apparaat. Bewaar af en toe een back-up, of gebruik hem om naar een ander apparaat te verhuizen.</p>
@@ -647,6 +654,7 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
   });
   $('app').addEventListener('change', (ev) => {
     const i = ev.target;
+    if (i.id === 'auto-close') { state.autoClose = Number(i.value); persist(); return; }
     if (i.id === 'fix-week') { state.fixWeek = i.value; render(); return; }
     if (i.id === 'import-file') { state.confirmImport = false; if (i.files[0]) importData(i.files[0]); else render(); return; }
     if (i.dataset.gname) { const name = i.value.trim(); const g = state.groups.find((x) => x.id === i.dataset.gname); if (name && g && name !== g.name) saveGroup(g.id, name); else if (g) i.value = g.name; }

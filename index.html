@@ -156,6 +156,7 @@ td.num, th.num { text-align: right; }
 /* beheer */
 .field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
 .field label { font-size: 14px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+select { min-height: 44px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); padding: 6px 10px; font: inherit; color: inherit; max-width: 100%; }
 input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--bg); padding: 8px 12px; min-width: 0; }
 .names { display: flex; gap: 12px; flex-wrap: wrap; }
 .names .field { flex: 1 1 220px; }
@@ -282,7 +283,11 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
   function addEntry(task, who) {
     state.weekLog.push({ id: uid(), task: task.id, name: task.name, points: task.points, who, day: state.today, ts: Date.now() });
     persist();
+    setTimeout(render, 61000);
   }
+  function findEntry(key, id) { return (state.logs[key] || []).find((e) => e.id === id); }
+  function swapEntry(key, id) { const e = findEntry(key, id); if (e) { e.who = e.who === 'p1' ? 'p2' : 'p1'; persist(); } }
+  function dropEntry(key, id) { const l = state.logs[key] || []; const i = l.findIndex((e) => e.id === id); if (i >= 0) { l.splice(i, 1); persist(); } }
   function removeEntry(id) {
     const i = state.weekLog.findIndex((e) => e.id === id);
     if (i >= 0) state.weekLog.splice(i, 1);
@@ -368,7 +373,7 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
       const d = new Date(e.ts);
       return `<div class="row ${e.who}"><span class="time">${pad(d.getHours())}:${pad(d.getMinutes())}</span><span class="dot"></span>
         <span class="grow"><b>${esc(state.names[e.who] || '?')}</b> · ${esc(e.name)}</span><span class="plus">+${e.points}</span>
-        <button class="btn" data-act="undo" data-id="${esc(e.id)}">Ongedaan maken</button></div>`;
+        ${Date.now() - e.ts < 60000 ? `<button class="btn" data-act="undo" data-id="${esc(e.id)}">Ongedaan maken</button>` : ''}</div>`;
     }).join('');
     return `
       <section class="score" aria-label="Stand van deze week">
@@ -382,7 +387,7 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
           : '<div class="list"><div class="empty">Nog geen taken. Voeg ze toe onder <a href="#beheer">Beheer</a>.</div></div>'}
       </section>
       <section class="stack" style="gap:12px">
-        <div class="sec-head"><h2>Vandaag gedaan</h2></div>
+        <div class="sec-head"><h2>Vandaag gedaan</h2><p>Verkeerd getikt? Een minuut lang kun je het hier ongedaan maken, daarna via <a href="#beheer">Beheer</a>.</p></div>
         <div class="list">${logRows || '<div class="empty">Vandaag is er nog niets afgevinkt.</div>'}</div>
       </section>`;
   }
@@ -467,6 +472,18 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
           <div class="step" aria-label="Punten"><button data-act="pts" data-id="${esc(t.id)}" data-d="-1" aria-label="Minder punten">−</button><output>${t.points}</output><button data-act="pts" data-id="${esc(t.id)}" data-d="1" aria-label="Meer punten">+</button></div>
           <button class="btn danger" data-act="del" data-id="${esc(t.id)}">Verwijderen</button></div>`).join('');
     if (!state.cfgReady) return '<div class="list"><div class="empty">Beheer laden…</div></div>';
+    const wkeys = [...new Set([state.cur.key, ...Object.keys(state.logs).filter((k) => state.logs[k].length)])].sort().reverse();
+    const fk = wkeys.includes(state.fixWeek) ? state.fixWeek : state.cur.key;
+    const fixRows = [...(state.logs[fk] || [])].sort((a, b) => b.ts - a.ts).map((e) => {
+      const d = new Date(e.ts), [yy, mm, dd] = String(e.day).split('-').map(Number), day = new Date(yy, mm - 1, dd), other = e.who === 'p1' ? 'p2' : 'p1';
+      return `<div class="row arow ${e.who}"><span class="time">${DAYS[(day.getDay() + 6) % 7]} ${dd} ${MONTHS[mm - 1]} · ${pad(d.getHours())}:${pad(d.getMinutes())}</span><span class="dot"></span>
+        <span class="grow"><b>${esc(state.names[e.who] || '?')}</b> · ${esc(e.name)}</span><span class="plus">+${e.points}</span>
+        <button class="btn" data-act="fix-swap" data-id="${esc(e.id)}">Naar ${esc(state.names[other])}</button>
+        <button class="btn danger" data-act="fix-del" data-id="${esc(e.id)}">Verwijderen</button></div>`;
+    }).join('');
+    const fix = `<div class="stack" style="gap:12px"><div class="sec-head"><h3>Afgevinkte taken corrigeren</h3>
+        <select id="fix-week" aria-label="Week">${wkeys.map((k) => { const w = weekFromKey(k); return `<option value="${k}" ${k === fk ? 'selected' : ''}>Week ${w.week} · ${rangeLabel(w.mon)} ${w.year}${k === state.cur.key ? ' (nu)' : ''}</option>`; }).join('')}</select></div>
+        <div class="list">${fixRows || '<div class="empty">In deze week is niets afgevinkt.</div>'}</div></div>`;
     if (state.pinStep === 'confirm') return pinPad('Herhaal de pincode', 'Voer dezelfde 4 cijfers nog een keer in.', !!state.pin);
     if (state.pinStep === 'set' || !state.pin) return pinPad(state.pin ? 'Kies een nieuwe pincode' : 'Kies een pincode voor Beheer', 'Vanaf nu is Beheer alleen te openen met deze 4 cijfers.', !!state.pin);
     if (!state.unlocked) return pinPad('Beheer is vergrendeld', 'Voer de pincode van 4 cijfers in.', false);
@@ -482,6 +499,7 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
       </form></div>
       <div class="stack" style="gap:12px"><h3>Taken en punten</h3>
         <div class="list">${rows || `<div class="empty">${state.ready ? 'Nog geen taken.' : 'Taken laden…'}</div>`}</div></div>
+      ${fix}
       <div class="panel"><h3>Pincode</h3><div class="row" style="padding:0;border:0"><span class="grow" style="color:var(--ink-2)">Beheer vergrendelt weer zodra je naar een ander scherm gaat.</span>
         <button class="btn" data-act="pin-change">Pincode wijzigen</button></div></div>
       <div class="panel"><h3>Back-up</h3><p style="margin:0;color:var(--ink-2)">Alle punten staan alleen in de browser van dit apparaat. Bewaar af en toe een back-up, of gebruik hem om naar een ander apparaat te verhuizen.</p>
@@ -509,6 +527,10 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
     if (a === 'key') pressKey(b.dataset.k);
     else if (a === 'pin-change') { state.pinStep = 'set'; state.entry = ''; state.pinMsg = ''; render(); }
     else if (a === 'pin-cancel') { state.pinStep = null; state.entry = ''; state.pinMsg = ''; render(); }
+    else if (a === 'fix-swap' || a === 'fix-del') {
+      const key = $('fix-week') ? $('fix-week').value : state.cur.key;
+      (a === 'fix-swap' ? swapEntry : dropEntry)(key, b.dataset.id);
+    }
     else if (a === 'export') exportData();
     else if (a === 'import-ask') { state.confirmImport = true; render(); }
     else if (a === 'import-no') { state.confirmImport = false; render(); }
@@ -524,6 +546,7 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
   });
   $('app').addEventListener('change', (ev) => {
     const i = ev.target;
+    if (i.id === 'fix-week') { state.fixWeek = i.value; render(); return; }
     if (i.id === 'import-file') { state.confirmImport = false; if (i.files[0]) importData(i.files[0]); else render(); return; }
     if (i.dataset.task) { const name = i.value.trim(); const t = state.tasks.find((x) => x.id === i.dataset.task); if (name && t && name !== t.name) saveTask(t.id, { name }); else if (t) i.value = t.name; }
     else if (i.dataset.name) { const name = i.value.trim() || state.names[i.dataset.name]; if (name !== state.names[i.dataset.name]) saveNames({ ...state.names, [i.dataset.name]: name }); else i.value = name; }

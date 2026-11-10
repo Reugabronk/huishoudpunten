@@ -118,7 +118,7 @@ nav a[aria-current="page"] { background: var(--surface); color: var(--ink); font
 .who button.p2 .fill { transform-origin: right; }
 .who button.both .fill { right: 50%; background: var(--p1); }
 .who button.both .fill.r { left: 50%; right: 0; background: var(--p2); transform-origin: right; }
-.who button.flash { border-style: solid; border-color: var(--pc); cursor: default; }
+.who button.flash { border-style: solid; border-color: var(--pc); }
 .who button.both.flash { border-color: var(--ink-2); }
 .who button.flash .dot { box-shadow: 0 0 0 2.5px var(--on-fill); }
 .who .cnt { font-variant-numeric: tabular-nums; flex: none; }
@@ -351,10 +351,12 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
     return PIDS.map((p) => ({ id: uid(), ...base, points: half, who: p, together: true, pair }));
   }
   function addEntry(task, who) {
-    state.weekLog.push(...makeEntries(task, who, Date.now()));
+    const made = makeEntries(task, who, Date.now());
+    state.weekLog.push(...made);
     if (who === 'both') toast(`Samen gedaan: jullie krijgen ieder ${pt(Math.floor(task.points / 2))}.`);
     persist();
     setTimeout(render, 61000);
+    return made.map((e) => e.id);
   }
   function findEntry(key, id) { return (state.logs[key] || []).find((e) => e.id === id); }
   function swapEntry(key, id) { const e = findEntry(key, id); if (e && !e.pair) { e.who = e.who === 'p1' ? 'p2' : 'p1'; persist(); } }
@@ -375,23 +377,38 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
     persist();
   }
   function doAll(gid, who) {
-    const g = state.groups.find((x) => x.id === gid); if (!g) return;
+    const g = state.groups.find((x) => x.id === gid); if (!g) return [];
+    const made = [];
     const all = tasksIn(gid), today = state.weekLog.filter((e) => e.day === state.today);
     const todo = all.filter((t) => !today.some((e) => e.task === t.id));
     const now = Date.now();
-    todo.forEach((t, i) => state.weekLog.push(...makeEntries(t, who, now + i)));
+    todo.forEach((t, i) => made.push(...makeEntries(t, who, now + i)));
+    state.weekLog.push(...made);
     const pts = todo.reduce((n, t) => n + (who === 'both' ? Math.floor(t.points / 2) : t.points), 0), skipped = all.length - todo.length;
     if (!todo.length) toast(`Alles in ${g.name} is vandaag al afgevinkt.`);
     else toast((who === 'both' ? `Samen gedaan: jullie krijgen ieder ${pt(pts)} voor ${g.name}.` : `${state.names[who]} krijgt ${pt(pts)} voor ${g.name}.`) + (skipped ? ` ${skipped === 1 ? '1 taak was' : skipped + ' taken waren'} vandaag al afgevinkt en ${skipped === 1 ? 'telt' : 'tellen'} niet opnieuw.` : ''));
     persist();
     setTimeout(render, 61000);
+    return made.map((e) => e.id);
   }
-  // Na een tik loopt het vakje in de ingestelde tijd leeg; zolang is het vergrendeld.
+  // Na een tik loopt het vakje in de ingestelde tijd leeg; nog een tik in die tijd annuleert.
   const flashing = (key) => { const f = state.flash[key]; return f && f.end > Date.now() ? f : null; };
   function startFlash(key) {
     const dur = state.tickSecs * 1000; if (!dur) return;
-    const now = Date.now(); state.flash[key] = { start: now, dur, end: now + dur };
+    const now = Date.now(); state.flash[key] = { start: now, dur, end: now + dur, ids: [] };
     setTimeout(() => { if (state.flash[key] && state.flash[key].end <= Date.now() + 30) { delete state.flash[key]; render(); } }, dur + 15);
+  }
+  function tick(key, add) {
+    const f = flashing(key);
+    if (f) {
+      delete state.flash[key];
+      state.weekLog = state.logs[state.cur.key] = state.weekLog.filter((e) => !f.ids.includes(e.id));
+      toast('Geannuleerd.'); persist(); return;
+    }
+    startFlash(key);
+    const ids = add();
+    if (!ids.length) delete state.flash[key]; else if (state.flash[key]) state.flash[key].ids = ids;
+    if (!ids.length) render();
   }
   function fillHtml(key) {
     const f = flashing(key); if (!f) return '';
@@ -671,7 +688,7 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
       <div class="stack" style="gap:12px"><div class="sec-head"><h3>Taken en mappen</h3><p>Sleep aan de zes puntjes om de volgorde te wijzigen of een taak in een andere map te zetten</p></div>
         ${blocks}</div>
       ${fix}
-      <div class="panel"><h3>Aftik-timer</h3><div class="row" style="padding:0;border:0;flex-wrap:wrap"><label for="tick-secs" class="grow" style="color:var(--ink-2);flex:1 1 240px">Na een tik kleurt het vakje en loopt het in deze tijd leeg. Zolang kun je dat vakje niet nog een keer aantikken.</label>
+      <div class="panel"><h3>Aftik-timer</h3><div class="row" style="padding:0;border:0;flex-wrap:wrap"><label for="tick-secs" class="grow" style="color:var(--ink-2);flex:1 1 240px">Na een tik kleurt het vakje en loopt het in deze tijd leeg. Tik je in die tijd nog een keer op hetzelfde vakje, dan wordt de tik geannuleerd.</label>
         <select id="tick-secs">${[[1, '1 seconde'], [2, '2 seconden'], [3, '3 seconden'], [5, '5 seconden'], [10, '10 seconden'], [0, 'Uit']].map(([v, l]) => `<option value="${v}" ${v === state.tickSecs ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
       <div class="panel"><h3>Mappen vanzelf sluiten</h3><div class="row" style="padding:0;border:0;flex-wrap:wrap"><label for="auto-close" class="grow" style="color:var(--ink-2);flex:1 1 240px">Een geopende map op het hoofdscherm klapt weer dicht als er zo lang niets is aangetikt.</label>
         <select id="auto-close">${[[15, '15 seconden'], [30, '30 seconden'], [60, '1 minuut'], [120, '2 minuten'], [300, '5 minuten'], [0, 'Nooit']].map(([v, l]) => `<option value="${v}" ${v === state.autoClose ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
@@ -725,11 +742,11 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
     else if (a === 'import-ask') { state.confirmImport = true; render(); }
     else if (a === 'import-no') { state.confirmImport = false; render(); }
     else if (a === 'toggle') toggleGroup(b.dataset.id);
-    else if (a === 'doall') { if (!flashing(b.dataset.key)) { startFlash(b.dataset.key); doAll(b.dataset.group, b.dataset.who); } }
+    else if (a === 'doall') tick(b.dataset.key, () => doAll(b.dataset.group, b.dataset.who));
     else if (a === 'gdel') { state.confirmDelG = b.dataset.id; render(); }
     else if (a === 'gdel-no') { state.confirmDelG = null; render(); }
     else if (a === 'gdel-yes') { state.confirmDelG = null; deleteGroup(b.dataset.id); }
-    else if (a === 'do') { const t = state.tasks.find((x) => x.id === b.dataset.task); if (t && !flashing(b.dataset.key)) { startFlash(b.dataset.key); addEntry(t, b.dataset.who); } }
+    else if (a === 'do') { const t = state.tasks.find((x) => x.id === b.dataset.task); if (t) tick(b.dataset.key, () => addEntry(t, b.dataset.who)); }
     else if (a === 'undo') removeEntry(b.dataset.id);
     else if (a === 'open') openWeek(b.dataset.key);
     else if (a === 'back') { state.hist = null; state.histLog = null; render(); }

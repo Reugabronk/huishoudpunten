@@ -47,6 +47,7 @@ body { margin: 0;
 .wrap, .stack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; border: 0; background: none; touch-action: manipulation; }
+.sec-head a, .empty a { color: inherit; }
 :focus-visible { outline: 3px solid var(--p1); outline-offset: 2px; }
 h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
 .p1 { --pc: var(--p1); } .p2 { --pc: var(--p2); }
@@ -167,6 +168,33 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
 .arow input { flex: 1 1 200px; }
 .addform { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
 .addform .field { flex: 1 1 220px; }
+.group { background: var(--surface-2); border-radius: 24px; padding: 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.g-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.g-head .pill, .group .who button:not(.done) { background-color: var(--surface); }
+.g-toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; font-family: var(--display); font-weight: 700; font-size: 22px; text-align: left; min-width: 0; flex: 1; }
+.g-toggle .g-name { overflow-wrap: anywhere; }
+.g-toggle .tw { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 14px; transition: transform .15s; }
+.g-toggle[aria-expanded="false"] .tw { transform: rotate(-90deg); }
+.g-all { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); align-items: center; gap: 12px; }
+.g-all > span { color: var(--ink-2); font-size: 15px; }
+.g-all .who { max-width: 560px; width: 100%; justify-self: end; }
+.g-all .who button { border-style: dashed; }
+.g-all .who button.done { border-style: solid; }
+.group .empty { padding: 8px; }
+.grip { flex: none; width: 44px; height: 48px; border-radius: 12px; background: var(--surface-2); color: var(--muted); cursor: grab; touch-action: none; display: flex; align-items: center; justify-content: center; }
+.grip svg { width: 18px; height: 22px; fill: currentColor; pointer-events: none; }
+.dragging { background: color-mix(in srgb, var(--p1) 14%, var(--surface)); box-shadow: 0 6px 20px rgb(0 0 0 / .18); position: relative; z-index: 3; }
+body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
+.block { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.block[data-drag] { background: var(--surface-2); border-radius: 22px; padding: 12px; }
+.block[data-drag] > .b-head .grip, .block[data-drag] > .b-head .btn { background: var(--surface); }
+.b-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 48px; }
+.b-head input { flex: 1 1 160px; font-weight: 700; }
+.b-head .hint { color: var(--muted); font-size: 15px; }
+.tasklist { min-height: 58px; }
+.tasklist .drop-hint:not(:only-child) { display: none; }
+.tasklist .row:first-child { border-top: 0; }
+.tasklist .row { border-top: 1px solid var(--line); }
 .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 12px 18px; border-radius: 12px; z-index: 20; max-width: calc(100% - 32px); }
 .pin { align-self: center; width: min(100%, 340px); display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: 26px; padding: 24px 20px; }
 .pin h2 { font-size: 22px; } .pin p { margin: 0; color: var(--ink-2); font-size: 15px; }
@@ -178,6 +206,7 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
 .keys button { height: 68px; border-radius: 18px; background: var(--surface-2); font-family: var(--display); font-weight: 700; font-size: 26px; }
 .keys button:active { transform: scale(.94); }
 @media (max-width: 520px) {
+  .g-all { grid-template-columns: 1fr; }
   .mid { grid-column: 1 / -1; grid-row: 2; max-width: none; }
   .duel { grid-template-columns: 1fr 1fr; }
   .weekrow { grid-template-columns: 1fr 1fr auto; }
@@ -240,7 +269,7 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
   const state = {
     ready: false,
     names: { p1: 'Speler 1', p2: 'Speler 2' },
-    tasks: [], weekLog: [], logs: {},
+    tasks: [], groups: [], weekLog: [], logs: {}, collapsed: {}, confirmDelG: null, dragging: false,
     cur: weekInfo(new Date()), today: dayKey(new Date()),
     hist: null, histLog: null, confirmDel: null, newPts: 1,
     pin: '', cfgReady: false, unlocked: false, entry: '', pinStep: null, pinFirst: '', pinMsg: '',
@@ -254,15 +283,21 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
   const logPath = (key) => `weeks/${key}/log`;
   const totals = (log) => { const t = { p1: 0, p2: 0 }; for (const e of log) if (e.who in t) t[e.who] += e.points || 0; return t; };
   const leader = (t) => t.p1 > t.p2 ? 'p1' : t.p2 > t.p1 ? 'p2' : null;
-  const sortedTasks = () => [...state.tasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+  const byOrder = (a, b) => (a.order || 0) - (b.order || 0);
+  const sortedTasks = () => [...state.tasks].sort(byOrder);
+  const sortedGroups = () => [...state.groups].sort(byOrder);
+  const tasksIn = (gid) => sortedTasks().filter((t) => (t.group || '') === gid);
+  const GRIP = '<svg viewBox="0 0 18 22" aria-hidden="true"><circle cx="5" cy="4" r="2"/><circle cx="13" cy="4" r="2"/><circle cx="5" cy="11" r="2"/><circle cx="13" cy="11" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="13" cy="18" r="2"/></svg>';
 
   /* ---------- opslag: alles staat in de browser van dit apparaat ---------- */
   const KEY = 'huishoudpunten-v1';
-  function snapshot() { return { v: 1, names: state.names, pin: state.pin, tasks: state.tasks, logs: state.logs }; }
+  function snapshot() { return { v: 1, names: state.names, pin: state.pin, tasks: state.tasks, groups: state.groups, logs: state.logs }; }
   function apply(d) {
     state.names = { p1: (d.names && d.names.p1) || 'Speler 1', p2: (d.names && d.names.p2) || 'Speler 2' };
     state.pin = typeof d.pin === 'string' ? d.pin : '';
     state.tasks = Array.isArray(d.tasks) ? d.tasks : [];
+    state.groups = Array.isArray(d.groups) ? d.groups : [];
+    for (const t of state.tasks) if (!state.groups.some((g) => g.id === t.group)) t.group = '';
     state.logs = d.logs && typeof d.logs === 'object' ? d.logs : {};
     state.weekLog = state.logs[state.cur.key] || (state.logs[state.cur.key] = []);
   }
@@ -276,6 +311,7 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
     try { d = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
     if (d) apply(d);
     else apply({ tasks: [['Vaatwasser uitruimen', 1], ['Stofzuigen', 2], ['Bad poetsen', 3]].map(([name, points], i) => ({ id: 't' + i, name, points, order: i })) });
+    try { state.collapsed = JSON.parse(localStorage.getItem(KEY + '-ui') || '{}') || {}; } catch (e) {}
     state.ready = state.cfgReady = true;
   }
 
@@ -294,7 +330,39 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
     persist();
   }
   function saveTask(id, patch) { const t = state.tasks.find((x) => x.id === id); if (t) { Object.assign(t, patch); persist(); } }
-  function addTask(name, points) { state.tasks.push({ id: uid(), name, points, order: Date.now() }); persist(); }
+  function addTask(name, points, group) { state.tasks.push({ id: uid(), name, points, group: group || '', order: Date.now() }); persist(); }
+  function addGroup(name) { state.groups.push({ id: uid(), name, order: Date.now() }); persist(); }
+  function saveGroup(id, name) { const g = state.groups.find((x) => x.id === id); if (g) { g.name = name; persist(); } }
+  function deleteGroup(id) {
+    state.groups = state.groups.filter((g) => g.id !== id);
+    for (const t of state.tasks) if (t.group === id) t.group = '';
+    persist();
+  }
+  function doAll(gid, who) {
+    const g = state.groups.find((x) => x.id === gid); if (!g) return;
+    const all = tasksIn(gid), today = state.weekLog.filter((e) => e.day === state.today);
+    const todo = all.filter((t) => !today.some((e) => e.task === t.id));
+    const now = Date.now();
+    todo.forEach((t, i) => state.weekLog.push({ id: uid(), task: t.id, name: t.name, points: t.points, who, day: state.today, ts: now + i }));
+    const pts = todo.reduce((n, t) => n + t.points, 0), skipped = all.length - todo.length;
+    if (!todo.length) toast(`Alles in ${g.name} is vandaag al afgevinkt.`);
+    else toast(`${state.names[who]} krijgt ${pt(pts)} voor ${g.name}.` + (skipped ? ` ${skipped === 1 ? '1 taak was' : skipped + ' taken waren'} vandaag al afgevinkt en ${skipped === 1 ? 'telt' : 'tellen'} niet opnieuw.` : ''));
+    persist();
+    setTimeout(render, 61000);
+  }
+  function toggleGroup(id) {
+    if (state.collapsed[id]) delete state.collapsed[id]; else state.collapsed[id] = true;
+    try { localStorage.setItem(KEY + '-ui', JSON.stringify(state.collapsed)); } catch (e) {}
+    render();
+  }
+  function commitOrder() {
+    $('app').querySelectorAll('[data-drag="group"]').forEach((n, i) => { const g = state.groups.find((x) => x.id === n.dataset.id); if (g) g.order = i; });
+    let n = 0;
+    $('app').querySelectorAll('[data-tasklist]').forEach((list) => list.querySelectorAll('[data-drag="task"]').forEach((r) => {
+      const t = state.tasks.find((x) => x.id === r.dataset.id); if (t) { t.group = list.dataset.gid; t.order = n++; }
+    }));
+    persist();
+  }
   function deleteTask(id) { state.tasks = state.tasks.filter((t) => t.id !== id); persist(); }
   function saveNames(names) { state.names = names; persist(); }
   function savePin(pin) { state.pin = pin; persist(); }
@@ -359,16 +427,28 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
       ? `<b>${esc(state.names[lead])} loopt voorop</b>met ${pt(diff)} verschil`
       : (t.p1 + t.p2 === 0 ? '<b>Nieuwe week</b>nog geen punten' : '<b>Gelijkspel</b>allebei evenveel punten');
     const sum = t.p1 + t.p2;
-    const tasks = sortedTasks();
-    const taskCards = tasks.map((task) => {
-      const btn = (p) => {
-        const n = todayLog.filter((e) => e.task === task.id && e.who === p).length;
-        return `<button class="${p} ${n ? 'done' : ''}" data-act="do" data-task="${esc(task.id)}" data-who="${p}" aria-label="${esc(state.names[p])} deed: ${esc(task.name)}">
-          <span class="dot"></span><span class="n">${esc(state.names[p])}</span>${n ? `<span class="cnt">✓${n > 1 ? ' ×' + n : ''}</span>` : ''}</button>`;
+    const btn = (task, p) => {
+      const n = todayLog.filter((e) => e.task === task.id && e.who === p).length;
+      return `<button class="${p} ${n ? 'done' : ''}" data-act="do" data-task="${esc(task.id)}" data-who="${p}" aria-label="${esc(state.names[p])} deed: ${esc(task.name)}">
+        <span class="dot"></span><span class="n">${esc(state.names[p])}</span>${n ? `<span class="cnt">✓${n > 1 ? ' ×' + n : ''}</span>` : ''}</button>`;
+    };
+    const cards = (list) => `<div class="tasks">${list.map((task) => `<article class="task"><div class="t-top"><div class="t-name">${esc(task.name)}</div><div class="pill">${pt(task.points)}</div></div>
+        <div class="who">${btn(task, 'p1')}${btn(task, 'p2')}</div></article>`).join('')}</div>`;
+    const loose = tasksIn(''), groups = sortedGroups();
+    const groupHtml = groups.map((g) => {
+      const ts = tasksIn(g.id), open = !state.collapsed[g.id], sumPts = ts.reduce((n, t) => n + t.points, 0);
+      const all = (p) => {
+        const done = ts.length && ts.every((t) => todayLog.some((e) => e.task === t.id && e.who === p));
+        return `<button class="${p} ${done ? 'done' : ''}" data-act="doall" data-group="${esc(g.id)}" data-who="${p}" aria-label="${esc(state.names[p])} deed alles in ${esc(g.name)}">
+          <span class="dot"></span><span class="n">${esc(state.names[p])}</span>${done ? '<span class="cnt">✓</span>' : ''}</button>`;
       };
-      return `<article class="task"><div class="t-top"><div class="t-name">${esc(task.name)}</div><div class="pill">${pt(task.points)}</div></div>
-        <div class="who">${btn('p1')}${btn('p2')}</div></article>`;
+      return `<section class="group"><div class="g-head">
+          <button class="g-toggle" data-act="toggle" data-id="${esc(g.id)}" aria-expanded="${open}"><span class="tw" aria-hidden="true">▾</span><span class="g-name">${esc(g.name)}</span></button>
+          <div class="pill">${ts.length} ${ts.length === 1 ? 'taak' : 'taken'} · ${pt(sumPts)}</div></div>
+        ${ts.length ? `<div class="g-all"><span>Hele map in één keer</span><div class="who">${all('p1')}${all('p2')}</div></div>` : ''}
+        ${!open ? '' : ts.length ? cards(ts) : '<div class="empty">Nog geen taken in deze map. Zet ze erin via Beheer.</div>'}</section>`;
     }).join('');
+    const taskHtml = (loose.length ? cards(loose) : '') + groupHtml;
     const logRows = todayLog.map((e) => {
       const d = new Date(e.ts);
       return `<div class="row ${e.who}"><span class="time">${pad(d.getHours())}:${pad(d.getMinutes())}</span><span class="dot"></span>
@@ -383,7 +463,7 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
       <section class="stack" style="gap:12px">
         <div class="sec-head"><h2>Taken</h2><p>Tik op wie de taak heeft gedaan</p></div>
         ${!state.ready ? '<div class="list"><div class="empty">Taken laden…</div></div>'
-          : tasks.length ? `<div class="tasks">${taskCards}</div>`
+          : taskHtml ? taskHtml
           : '<div class="list"><div class="empty">Nog geen taken. Voeg ze toe onder <a href="#beheer">Beheer</a>.</div></div>'}
       </section>
       <section class="stack" style="gap:12px">
@@ -465,12 +545,20 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
   }
 
   function viewAdmin() {
-    const rows = sortedTasks().map((t) => state.confirmDel === t.id
+    const taskRow = (t) => state.confirmDel === t.id
       ? `<div class="row arow"><span class="grow">“${esc(t.name)}” verwijderen? Eerder verdiende punten blijven staan.</span>
           <button class="btn solid-danger" data-act="del-yes" data-id="${esc(t.id)}">Verwijderen</button><button class="btn" data-act="del-no">Annuleren</button></div>`
-      : `<div class="row arow"><input type="text" id="tn-${esc(t.id)}" data-task="${esc(t.id)}" value="${esc(t.name)}" maxlength="60" aria-label="Naam van de taak">
+      : `<div class="row arow" data-drag="task" data-id="${esc(t.id)}"><button class="grip" data-grip id="grip-${esc(t.id)}" aria-label="${esc(t.name)} verplaatsen: sleep, of gebruik pijl omhoog en omlaag">${GRIP}</button>
+          <input type="text" id="tn-${esc(t.id)}" data-task="${esc(t.id)}" value="${esc(t.name)}" maxlength="60" aria-label="Naam van de taak">
           <div class="step" aria-label="Punten"><button data-act="pts" data-id="${esc(t.id)}" data-d="-1" aria-label="Minder punten">−</button><output>${t.points}</output><button data-act="pts" data-id="${esc(t.id)}" data-d="1" aria-label="Meer punten">+</button></div>
-          <button class="btn danger" data-act="del" data-id="${esc(t.id)}">Verwijderen</button></div>`).join('');
+          <button class="btn danger" data-act="del" data-id="${esc(t.id)}">Verwijderen</button></div>`;
+    const taskList = (gid) => `<div class="list tasklist" data-tasklist data-gid="${esc(gid)}">${tasksIn(gid).map(taskRow).join('')}<div class="empty drop-hint">Sleep een taak hierheen</div></div>`;
+    const blocks = `<div class="block" data-block><div class="b-head"><b>Losse taken</b><span class="hint">niet in een map</span></div>${taskList('')}</div>`
+      + sortedGroups().map((g) => `<div class="block" data-block data-drag="group" data-id="${esc(g.id)}"><div class="b-head">${state.confirmDelG === g.id
+        ? `<span class="grow" style="flex:1 1 200px">Map “${esc(g.name)}” verwijderen? De taken blijven bestaan als losse taken.</span><button class="btn solid-danger" data-act="gdel-yes" data-id="${esc(g.id)}">Verwijderen</button><button class="btn" data-act="gdel-no">Annuleren</button>`
+        : `<button class="grip" data-grip id="grip-${esc(g.id)}" aria-label="Map ${esc(g.name)} verplaatsen: sleep, of gebruik pijl omhoog en omlaag">${GRIP}</button>
+           <input type="text" id="gn-${esc(g.id)}" data-gname="${esc(g.id)}" value="${esc(g.name)}" maxlength="40" aria-label="Naam van de map">
+           <button class="btn danger" data-act="gdel" data-id="${esc(g.id)}">Map verwijderen</button>`}</div>${taskList(g.id)}</div>`).join('');
     if (!state.cfgReady) return '<div class="list"><div class="empty">Beheer laden…</div></div>';
     const wkeys = [...new Set([state.cur.key, ...Object.keys(state.logs).filter((k) => state.logs[k].length)])].sort().reverse();
     const fk = wkeys.includes(state.fixWeek) ? state.fixWeek : state.cur.key;
@@ -492,13 +580,20 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
       <div class="panel"><h3>Namen</h3><div class="names">
         ${PIDS.map((p) => `<div class="field ${p}"><label for="name-${p}"><span class="dot"></span>Speler ${p[1]}</label><input type="text" id="name-${p}" data-name="${p}" value="${esc(state.names[p])}" maxlength="24"></div>`).join('')}
       </div></div>
+      <div class="two">
       <div class="panel"><h3>Nieuwe taak</h3><form class="addform" id="addform">
-        <div class="field"><label for="new-name">Naam</label><input type="text" id="new-name" maxlength="60" placeholder="Bijvoorbeeld: ramen lappen"></div>
+        <div class="field"><label for="new-name">Naam</label><input type="text" id="new-name" data-keep maxlength="60" placeholder="Bijvoorbeeld: ramen lappen"></div>
+        <div class="field"><label for="new-group">Map</label><select id="new-group" data-keep style="min-height:48px"><option value="">Geen map</option>${sortedGroups().map((g) => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('')}</select></div>
         <div class="field" style="flex:none"><label>Punten</label><div class="step"><button type="button" data-act="newpts" data-d="-1" aria-label="Minder punten">−</button><output>${state.newPts}</output><button type="button" data-act="newpts" data-d="1" aria-label="Meer punten">+</button></div></div>
         <button class="btn primary" type="submit" style="min-height:48px">Toevoegen</button>
       </form></div>
-      <div class="stack" style="gap:12px"><h3>Taken en punten</h3>
-        <div class="list">${rows || `<div class="empty">${state.ready ? 'Nog geen taken.' : 'Taken laden…'}</div>`}</div></div>
+      <div class="panel"><h3>Nieuwe map</h3><form class="addform" id="groupform">
+        <div class="field"><label for="new-group-name">Naam</label><input type="text" id="new-group-name" data-keep maxlength="40" placeholder="Bijvoorbeeld: keuken"></div>
+        <button class="btn primary" type="submit" style="min-height:48px">Map toevoegen</button>
+      </form></div>
+      </div>
+      <div class="stack" style="gap:12px"><div class="sec-head"><h3>Taken en mappen</h3><p>Sleep aan de zes puntjes om de volgorde te wijzigen of een taak in een andere map te zetten</p></div>
+        ${blocks}</div>
       ${fix}
       <div class="panel"><h3>Pincode</h3><div class="row" style="padding:0;border:0"><span class="grow" style="color:var(--ink-2)">Beheer vergrendelt weer zodra je naar een ander scherm gaat.</span>
         <button class="btn" data-act="pin-change">Pincode wijzigen</button></div></div>
@@ -510,13 +605,14 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
 
   function route() { const h = location.hash.replace('#', ''); return h === 'terugkijken' || h === 'beheer' ? h : ''; }
   function render() {
+    if (state.dragging) return;
     const v = route();
     const act = document.activeElement, fid = act && act.id, pos = act && act.tagName === 'INPUT' ? [act.selectionStart, act.selectionEnd] : null;
-    const draft = $('new-name') ? $('new-name').value : '';
+    const keep = {}; document.querySelectorAll('[data-keep]').forEach((e) => { keep[e.id] = e.value; });
     $('weeklabel').textContent = `Week ${state.cur.week} · ${rangeLabel(state.cur.mon)}`;
     document.querySelectorAll('nav a').forEach((a) => a.dataset.view === v ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'));
     $('app').innerHTML = v === 'beheer' ? viewAdmin() : v === 'terugkijken' ? viewHistory() : viewToday();
-    if ($('new-name') && draft) $('new-name').value = draft;
+    for (const id in keep) if ($(id)) $(id).value = keep[id];
     if (fid && $(fid) && $(fid) !== document.activeElement) { $(fid).focus(); if (pos) try { $(fid).setSelectionRange(pos[0], pos[1]); } catch (e) {} }
   }
 
@@ -534,6 +630,11 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
     else if (a === 'export') exportData();
     else if (a === 'import-ask') { state.confirmImport = true; render(); }
     else if (a === 'import-no') { state.confirmImport = false; render(); }
+    else if (a === 'toggle') toggleGroup(b.dataset.id);
+    else if (a === 'doall') doAll(b.dataset.group, b.dataset.who);
+    else if (a === 'gdel') { state.confirmDelG = b.dataset.id; render(); }
+    else if (a === 'gdel-no') { state.confirmDelG = null; render(); }
+    else if (a === 'gdel-yes') { state.confirmDelG = null; deleteGroup(b.dataset.id); }
     else if (a === 'do') { const t = state.tasks.find((x) => x.id === b.dataset.task); if (t) addEntry(t, b.dataset.who); }
     else if (a === 'undo') removeEntry(b.dataset.id);
     else if (a === 'open') openWeek(b.dataset.key);
@@ -548,15 +649,69 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
     const i = ev.target;
     if (i.id === 'fix-week') { state.fixWeek = i.value; render(); return; }
     if (i.id === 'import-file') { state.confirmImport = false; if (i.files[0]) importData(i.files[0]); else render(); return; }
-    if (i.dataset.task) { const name = i.value.trim(); const t = state.tasks.find((x) => x.id === i.dataset.task); if (name && t && name !== t.name) saveTask(t.id, { name }); else if (t) i.value = t.name; }
+    if (i.dataset.gname) { const name = i.value.trim(); const g = state.groups.find((x) => x.id === i.dataset.gname); if (name && g && name !== g.name) saveGroup(g.id, name); else if (g) i.value = g.name; }
+    else if (i.dataset.task) { const name = i.value.trim(); const t = state.tasks.find((x) => x.id === i.dataset.task); if (name && t && name !== t.name) saveTask(t.id, { name }); else if (t) i.value = t.name; }
     else if (i.dataset.name) { const name = i.value.trim() || state.names[i.dataset.name]; if (name !== state.names[i.dataset.name]) saveNames({ ...state.names, [i.dataset.name]: name }); else i.value = name; }
   });
   $('app').addEventListener('submit', (ev) => {
     ev.preventDefault();
+    if (ev.target.id === 'groupform') {
+      const g = $('new-group-name').value.trim();
+      if (!g) { toast('Geef de map eerst een naam.'); $('new-group-name').focus(); return; }
+      $('new-group-name').value = ''; addGroup(g); return;
+    }
     const name = $('new-name').value.trim();
     if (!name) { toast('Geef de taak eerst een naam.'); $('new-name').focus(); return; }
     $('new-name').value = ''; const p = state.newPts; state.newPts = 1;
-    addTask(name, p); render();
+    addTask(name, p, $('new-group').value);
+  });
+
+  /* ---------- slepen ---------- */
+  let drag = null;
+  $('app').addEventListener('pointerdown', (ev) => {
+    const g = ev.target.closest('[data-grip]'); if (!g || drag) return;
+    const row = g.closest('[data-drag]'); if (!row) return;
+    ev.preventDefault();
+    drag = { row, kind: row.dataset.drag, id: ev.pointerId };
+    state.dragging = true; row.classList.add('dragging'); document.body.classList.add('drag-on');
+    try { g.setPointerCapture(ev.pointerId); } catch (e) {}
+  });
+  document.addEventListener('pointermove', (ev) => {
+    if (!drag || ev.pointerId !== drag.id) return;
+    const y = ev.clientY, row = drag.row;
+    if (y < 70) window.scrollBy(0, -14); else if (y > window.innerHeight - 70) window.scrollBy(0, 14);
+    const el = document.elementFromPoint(ev.clientX, y); if (!el) return;
+    const tgt = el.closest(`[data-drag="${drag.kind}"]`);
+    if (tgt && tgt !== row) {
+      const r = tgt.getBoundingClientRect(), mid = r.top + r.height / 2;
+      const rowFirst = row.compareDocumentPosition(tgt) & Node.DOCUMENT_POSITION_FOLLOWING;
+      if (tgt.parentNode !== row.parentNode) tgt.parentNode.insertBefore(row, y < mid ? tgt : tgt.nextSibling);
+      else if (rowFirst && y > mid) tgt.parentNode.insertBefore(row, tgt.nextSibling);
+      else if (!rowFirst && y < mid) tgt.parentNode.insertBefore(row, tgt);
+      return;
+    }
+    if (drag.kind !== 'task' || tgt) return;
+    const block = el.closest('[data-block]'); if (!block) return;
+    const list = block.querySelector('[data-tasklist]');
+    if (el.closest('.b-head')) { if (list.firstElementChild !== row) list.prepend(row); }
+    else if (!list.contains(row)) list.insertBefore(row, list.querySelector('.drop-hint'));
+  });
+  function dragEnd(ev) {
+    if (!drag || ev.pointerId !== drag.id) return;
+    drag = null; state.dragging = false; document.body.classList.remove('drag-on');
+    commitOrder();
+  }
+  document.addEventListener('pointerup', dragEnd);
+  document.addEventListener('pointercancel', dragEnd);
+  $('app').addEventListener('keydown', (ev) => {
+    const g = ev.target.closest && ev.target.closest('[data-grip]');
+    if (!g || (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown')) return;
+    ev.preventDefault();
+    const row = g.closest('[data-drag]'), up = ev.key === 'ArrowUp';
+    const sib = up ? row.previousElementSibling : row.nextElementSibling;
+    if (!sib || sib.dataset.drag !== row.dataset.drag) return;
+    if (up) sib.before(row); else sib.after(row);
+    commitOrder();
   });
   function showTip(ev) {
     const h = ev.target.closest && ev.target.closest('[data-tip]');
@@ -573,7 +728,7 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
     if (/^[0-9]$/.test(ev.key)) { ev.preventDefault(); pressKey(ev.key); }
     else if (ev.key === 'Backspace') { ev.preventDefault(); pressKey('back'); }
   });
-  window.addEventListener('hashchange', () => { state.confirmDel = null; state.confirmImport = false; state.unlocked = false; state.entry = ''; state.pinStep = null; state.pinMsg = ''; if (route() !== 'terugkijken') { state.hist = null; state.histLog = null; } render(); });
+  window.addEventListener('hashchange', () => { state.confirmDel = null; state.confirmDelG = null; state.confirmImport = false; state.unlocked = false; state.entry = ''; state.pinStep = null; state.pinMsg = ''; if (route() !== 'terugkijken') { state.hist = null; state.histLog = null; } render(); });
 
   function openWeek(key) { state.hist = key; state.histLog = state.logs[key] || []; render(); }
   function banner(msg) { const b = $('banner'); b.textContent = msg || ''; b.hidden = !msg; }

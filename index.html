@@ -91,7 +91,10 @@ nav a[aria-current="page"] { background: var(--surface); color: var(--ink); font
 .task .t-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .task .t-name { font-weight: 700; font-size: 19px; overflow-wrap: anywhere; min-width: 0; }
 .pill { flex: none; font-family: var(--display); font-weight: 700; background: var(--surface-2); border-radius: 999px; padding: 4px 12px; font-size: 15px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.who { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.who { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .62fr) minmax(0, 1fr); gap: 8px; }
+.who button.both { background: var(--surface-2); border-color: var(--line); padding-inline: 6px; }
+.who button.both.done { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.dot.duo { background: linear-gradient(90deg, var(--p1) 50%, var(--p2) 50%); }
 .who button { min-height: 56px; border-radius: 14px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; min-width: 0;
   background: color-mix(in srgb, var(--pc) 13%, var(--surface)); border: 2px solid color-mix(in srgb, var(--pc) 45%, var(--surface)); transition: transform .08s; }
 .who button:active { transform: scale(.96); }
@@ -170,7 +173,8 @@ input[type="text"] { width: 100%; min-height: 48px; border-radius: 12px; border:
 .addform .field { flex: 1 1 220px; }
 .group { background: var(--surface-2); border-radius: 24px; padding: 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .g-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.g-head .pill, .group .who button:not(.done) { background-color: var(--surface); }
+.g-head .pill, .group .who button:not(.done):not(.both) { background-color: var(--surface); }
+.group .who button.both:not(.done) { background: var(--bg); }
 .g-toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; font-family: var(--display); font-weight: 700; font-size: 22px; text-align: left; min-width: 0; flex: 1; }
 .g-toggle .g-name { overflow-wrap: anywhere; }
 .g-toggle .tw { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 14px; transition: transform .15s; }
@@ -316,19 +320,28 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
   }
 
   /* ---------- acties ---------- */
+  // Samen gedaan: ieder de helft, naar beneden afgerond, als twee gekoppelde regels.
+  function makeEntries(task, who, ts) {
+    const base = { task: task.id, name: task.name, day: state.today, ts };
+    if (who !== 'both') return [{ id: uid(), ...base, points: task.points, who }];
+    const half = Math.floor(task.points / 2), pair = uid();
+    return PIDS.map((p) => ({ id: uid(), ...base, points: half, who: p, together: true, pair }));
+  }
   function addEntry(task, who) {
-    state.weekLog.push({ id: uid(), task: task.id, name: task.name, points: task.points, who, day: state.today, ts: Date.now() });
+    state.weekLog.push(...makeEntries(task, who, Date.now()));
+    if (who === 'both') toast(`Samen gedaan: jullie krijgen ieder ${pt(Math.floor(task.points / 2))}.`);
     persist();
     setTimeout(render, 61000);
   }
   function findEntry(key, id) { return (state.logs[key] || []).find((e) => e.id === id); }
-  function swapEntry(key, id) { const e = findEntry(key, id); if (e) { e.who = e.who === 'p1' ? 'p2' : 'p1'; persist(); } }
-  function dropEntry(key, id) { const l = state.logs[key] || []; const i = l.findIndex((e) => e.id === id); if (i >= 0) { l.splice(i, 1); persist(); } }
-  function removeEntry(id) {
-    const i = state.weekLog.findIndex((e) => e.id === id);
-    if (i >= 0) state.weekLog.splice(i, 1);
+  function swapEntry(key, id) { const e = findEntry(key, id); if (e && !e.pair) { e.who = e.who === 'p1' ? 'p2' : 'p1'; persist(); } }
+  function dropEntry(key, id) {
+    const l = state.logs[key] || [], e = l.find((x) => x.id === id); if (!e) return;
+    state.logs[key] = l.filter((x) => x.id !== id && !(e.pair && x.pair === e.pair));
+    if (key === state.cur.key) state.weekLog = state.logs[key];
     persist();
   }
+  function removeEntry(id) { dropEntry(state.cur.key, id); }
   function saveTask(id, patch) { const t = state.tasks.find((x) => x.id === id); if (t) { Object.assign(t, patch); persist(); } }
   function addTask(name, points, group) { state.tasks.push({ id: uid(), name, points, group: group || '', order: Date.now() }); persist(); }
   function addGroup(name) { state.groups.push({ id: uid(), name, order: Date.now() }); persist(); }
@@ -343,10 +356,10 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
     const all = tasksIn(gid), today = state.weekLog.filter((e) => e.day === state.today);
     const todo = all.filter((t) => !today.some((e) => e.task === t.id));
     const now = Date.now();
-    todo.forEach((t, i) => state.weekLog.push({ id: uid(), task: t.id, name: t.name, points: t.points, who, day: state.today, ts: now + i }));
-    const pts = todo.reduce((n, t) => n + t.points, 0), skipped = all.length - todo.length;
+    todo.forEach((t, i) => state.weekLog.push(...makeEntries(t, who, now + i)));
+    const pts = todo.reduce((n, t) => n + (who === 'both' ? Math.floor(t.points / 2) : t.points), 0), skipped = all.length - todo.length;
     if (!todo.length) toast(`Alles in ${g.name} is vandaag al afgevinkt.`);
-    else toast(`${state.names[who]} krijgt ${pt(pts)} voor ${g.name}.` + (skipped ? ` ${skipped === 1 ? '1 taak was' : skipped + ' taken waren'} vandaag al afgevinkt en ${skipped === 1 ? 'telt' : 'tellen'} niet opnieuw.` : ''));
+    else toast((who === 'both' ? `Samen gedaan: jullie krijgen ieder ${pt(pts)} voor ${g.name}.` : `${state.names[who]} krijgt ${pt(pts)} voor ${g.name}.`) + (skipped ? ` ${skipped === 1 ? '1 taak was' : skipped + ' taken waren'} vandaag al afgevinkt en ${skipped === 1 ? 'telt' : 'tellen'} niet opnieuw.` : ''));
     persist();
     setTimeout(render, 61000);
   }
@@ -433,31 +446,35 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
       : (t.p1 + t.p2 === 0 ? '<b>Nieuwe week</b>nog geen punten' : '<b>Gelijkspel</b>allebei evenveel punten');
     const sum = t.p1 + t.p2;
     const btn = (task, p) => {
-      const n = todayLog.filter((e) => e.task === task.id && e.who === p).length;
-      return `<button class="${p} ${n ? 'done' : ''}" data-act="do" data-task="${esc(task.id)}" data-who="${p}" aria-label="${esc(state.names[p])} deed: ${esc(task.name)}">
-        <span class="dot"></span><span class="n">${esc(state.names[p])}</span>${n ? `<span class="cnt">✓${n > 1 ? ' ×' + n : ''}</span>` : ''}</button>`;
+      const both = p === 'both';
+      const n = todayLog.filter((e) => e.task === task.id && (both ? e.together && e.who === 'p1' : !e.together && e.who === p)).length;
+      const label = both ? 'Samen' : state.names[p];
+      return `<button class="${p} ${n ? 'done' : ''}" data-act="do" data-task="${esc(task.id)}" data-who="${p}" aria-label="${both ? 'Samen gedaan' : esc(label) + ' deed'}: ${esc(task.name)}">
+        ${both ? '' : '<span class="dot"></span>'}<span class="n">${esc(label)}</span>${n ? `<span class="cnt">✓${n > 1 ? ' ×' + n : ''}</span>` : ''}</button>`;
     };
     const cards = (list) => `<div class="tasks">${list.map((task) => `<article class="task"><div class="t-top"><div class="t-name">${esc(task.name)}</div><div class="pill">${pt(task.points)}</div></div>
-        <div class="who">${btn(task, 'p1')}${btn(task, 'p2')}</div></article>`).join('')}</div>`;
+        <div class="who">${btn(task, 'p1')}${btn(task, 'both')}${btn(task, 'p2')}</div></article>`).join('')}</div>`;
     const loose = tasksIn(''), groups = sortedGroups();
     const groupHtml = groups.map((g) => {
       const ts = tasksIn(g.id), open = !!state.open[g.id], sumPts = ts.reduce((n, t) => n + t.points, 0);
       const all = (p) => {
-        const done = ts.length && ts.every((t) => todayLog.some((e) => e.task === t.id && e.who === p));
-        return `<button class="${p} ${done ? 'done' : ''}" data-act="doall" data-group="${esc(g.id)}" data-who="${p}" aria-label="${esc(state.names[p])} deed alles in ${esc(g.name)}">
-          <span class="dot"></span><span class="n">${esc(state.names[p])}</span>${done ? '<span class="cnt">✓</span>' : ''}</button>`;
+        const both = p === 'both';
+        const done = ts.length && ts.every((t) => todayLog.some((e) => e.task === t.id && (both ? e.together : !e.together && e.who === p)));
+        const label = both ? 'Samen' : state.names[p];
+        return `<button class="${p} ${done ? 'done' : ''}" data-act="doall" data-group="${esc(g.id)}" data-who="${p}" aria-label="${both ? 'Samen alles gedaan' : esc(label) + ' deed alles'} in ${esc(g.name)}">
+          ${both ? '' : '<span class="dot"></span>'}<span class="n">${esc(label)}</span>${done ? '<span class="cnt">✓</span>' : ''}</button>`;
       };
       return `<section class="group"><div class="g-head">
           <button class="g-toggle" data-act="toggle" data-id="${esc(g.id)}" aria-expanded="${open}"><span class="tw" aria-hidden="true">▾</span><span class="g-name">${esc(g.name)}</span></button>
           <div class="pill">${ts.length} ${ts.length === 1 ? 'taak' : 'taken'} · ${pt(sumPts)}</div></div>
-        ${open && ts.length ? `<div class="g-all"><span>Hele map in één keer</span><div class="who">${all('p1')}${all('p2')}</div></div>` : ''}
+        ${open && ts.length ? `<div class="g-all"><span>Hele map in één keer</span><div class="who">${all('p1')}${all('both')}${all('p2')}</div></div>` : ''}
         ${!open ? '' : ts.length ? cards(ts) : '<div class="empty">Nog geen taken in deze map. Zet ze erin via Beheer.</div>'}</section>`;
     }).join('');
     const taskHtml = (loose.length ? cards(loose) : '') + groupHtml;
-    const logRows = todayLog.map((e) => {
+    const logRows = todayLog.filter((e) => !(e.pair && e.who === 'p2')).map((e) => {
       const d = new Date(e.ts);
-      return `<div class="row ${e.who}"><span class="time">${pad(d.getHours())}:${pad(d.getMinutes())}</span><span class="dot"></span>
-        <span class="grow"><b>${esc(state.names[e.who] || '?')}</b> · ${esc(e.name)}</span><span class="plus">+${e.points}</span>
+      return `<div class="row ${e.pair ? '' : e.who}"><span class="time">${pad(d.getHours())}:${pad(d.getMinutes())}</span><span class="dot ${e.pair ? 'duo' : ''}"></span>
+        <span class="grow"><b>${e.pair ? 'Samen' : esc(state.names[e.who] || '?')}</b> · ${esc(e.name)}</span><span class="plus">+${e.points}${e.pair ? ' ieder' : ''}</span>
         ${Date.now() - e.ts < 60000 ? `<button class="btn" data-act="undo" data-id="${esc(e.id)}">Ongedaan maken</button>` : ''}</div>`;
     }).join('');
     return `
@@ -567,11 +584,11 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
     if (!state.cfgReady) return '<div class="list"><div class="empty">Beheer laden…</div></div>';
     const wkeys = [...new Set([state.cur.key, ...Object.keys(state.logs).filter((k) => state.logs[k].length)])].sort().reverse();
     const fk = wkeys.includes(state.fixWeek) ? state.fixWeek : state.cur.key;
-    const fixRows = [...(state.logs[fk] || [])].sort((a, b) => b.ts - a.ts).map((e) => {
+    const fixRows = (state.logs[fk] || []).filter((e) => !(e.pair && e.who === 'p2')).sort((a, b) => b.ts - a.ts).map((e) => {
       const d = new Date(e.ts), [yy, mm, dd] = String(e.day).split('-').map(Number), day = new Date(yy, mm - 1, dd), other = e.who === 'p1' ? 'p2' : 'p1';
-      return `<div class="row arow ${e.who}"><span class="time">${DAYS[(day.getDay() + 6) % 7]} ${dd} ${MONTHS[mm - 1]} · ${pad(d.getHours())}:${pad(d.getMinutes())}</span><span class="dot"></span>
-        <span class="grow"><b>${esc(state.names[e.who] || '?')}</b> · ${esc(e.name)}</span><span class="plus">+${e.points}</span>
-        <button class="btn" data-act="fix-swap" data-id="${esc(e.id)}">Naar ${esc(state.names[other])}</button>
+      return `<div class="row arow ${e.pair ? '' : e.who}"><span class="time">${DAYS[(day.getDay() + 6) % 7]} ${dd} ${MONTHS[mm - 1]} · ${pad(d.getHours())}:${pad(d.getMinutes())}</span><span class="dot ${e.pair ? 'duo' : ''}"></span>
+        <span class="grow"><b>${e.pair ? 'Samen' : esc(state.names[e.who] || '?')}</b> · ${esc(e.name)}</span><span class="plus">+${e.points}${e.pair ? ' ieder' : ''}</span>
+        ${e.pair ? '' : `<button class="btn" data-act="fix-swap" data-id="${esc(e.id)}">Naar ${esc(state.names[other])}</button>`}
         <button class="btn danger" data-act="fix-del" data-id="${esc(e.id)}">Verwijderen</button></div>`;
     }).join('');
     const fix = `<div class="stack" style="gap:12px"><div class="sec-head"><h3>Afgevinkte taken corrigeren</h3>

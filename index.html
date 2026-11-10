@@ -885,6 +885,14 @@ body.drag-on { user-select: none; -webkit-user-select: none; cursor: grabbing; }
     render();
   }, 30000);
 
+  // De app opent altijd op Deze week, ook na herladen of als de tablet een tijd uit heeft gestaan.
+  const goHome = () => { if (location.hash && location.hash !== '#') location.hash = ''; };
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { goHome(); }
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) hiddenAt = Date.now();
+    else if (hiddenAt && Date.now() - hiddenAt > 60000) goHome();
+  });
   load();
   render();
 })();
